@@ -17,6 +17,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WhatsappController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -87,6 +88,17 @@ Route::middleware('auth')->group(function (): void {
             ->name('tagihan.verifikasi');
         Route::post('tagihan/pembayaran/{pembayaran}/tolak', [TagihanController::class, 'tolak'])
             ->name('tagihan.tolak');
+
+        // WhatsApp Admin Panel (admin only)
+        Route::prefix('whatsapp')->name('whatsapp.')->group(function (): void {
+            Route::get('/', [WhatsappController::class, 'index'])->name('index');
+            Route::get('/status', [WhatsappController::class, 'statusAjax'])->name('status');
+            Route::get('/templates', [WhatsappController::class, 'templates'])->name('templates');
+            Route::put('/templates', [WhatsappController::class, 'updateTemplates'])->name('templates.update');
+            Route::get('/log-notifikasi', [WhatsappController::class, 'logNotifikasi'])->name('log-notifikasi');
+            Route::post('/resend/{notifikasi}', [WhatsappController::class, 'resend'])->name('resend');
+            Route::get('/log-chatbot', [WhatsappController::class, 'logChatbot'])->name('log-chatbot');
+        });
     });
 
     /*

@@ -40,6 +40,7 @@
             'items' => [
                 ['route' => 'pengumuman.index', 'match' => 'pengumuman.*', 'icon' => 'pengumuman', 'label' => 'Pengumuman', 'show' => true],
                 ['route' => 'users.index', 'match' => 'users.*', 'icon' => 'users', 'label' => 'Manajemen Akun', 'show' => $isAdmin],
+                ['route' => 'whatsapp.index', 'match' => 'whatsapp.*', 'icon' => 'whatsapp', 'label' => 'WhatsApp Gateway', 'show' => $isAdmin],
             ],
         ],
     ];
