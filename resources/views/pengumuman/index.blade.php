@@ -1,37 +1,80 @@
 @extends('layouts.app')
+
 @section('title', 'Pengumuman')
+
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Pengumuman</h3>
-    <a href="{{ route('pengumuman.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Buat Pengumuman</a>
-</div>
-<div class="card"><div class="card-body">
-    <div class="table-responsive"><table class="table table-hover">
-        <thead><tr>
-            <th>Judul</th><th>Target</th><th>Publish</th><th>Pembuat</th><th>Aktif</th><th width="180">Aksi</th>
-        </tr></thead>
-        <tbody>
-            @forelse ($pengumuman as $p)
-                <tr>
-                    <td>{{ $p->judul }}</td>
-                    <td>{{ $p->target_role ?? 'Semua' }}</td>
-                    <td>{{ optional($p->tanggal_publish)->format('d M Y') ?? '-' }}</td>
-                    <td>{{ $p->pembuat->nama ?? '-' }}</td>
-                    <td>@if ($p->is_active) <span class="badge bg-success">Aktif</span> @else <span class="badge bg-secondary">Nonaktif</span> @endif</td>
-                    <td>
-                        <a href="{{ route('pengumuman.show', $p) }}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
-                        <a href="{{ route('pengumuman.edit', $p) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
-                        <form action="{{ route('pengumuman.destroy', $p) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
-                        </form>
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="6" class="text-center text-muted">Belum ada data.</td></tr>
-            @endforelse
-        </tbody>
-    </table></div>
-    {{ $pengumuman->links() }}
-</div></div>
+@php $isAdmin = auth()->user()->isAdmin(); @endphp
+
+<x-page-header title="Pengumuman" subtitle="Kelola pengumuman untuk warga sekolah.">
+    @if ($isAdmin)
+        <x-slot:actions>
+            <x-button :href="route('pengumuman.create')" variant="primary">
+                <x-icon name="plus" class="h-4 w-4" /> Buat Pengumuman
+            </x-button>
+        </x-slot:actions>
+    @endif
+</x-page-header>
+
+<x-card padding="p-0">
+    @if ($pengumuman->count())
+        {{-- Desktop --}}
+        <div class="hidden md:block">
+            <x-table :headers="['Judul', 'Target', 'Tanggal Publish', 'Dibuat Oleh', 'Status', 'Aksi']">
+                @foreach ($pengumuman as $p)
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">{{ $p->judul }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <x-badge variant="brand">{{ $p->target_role ?? 'semua' }}</x-badge>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ optional($p->tanggal_publish)->format('d M Y') ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ $p->pembuat->nama ?? '-' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <x-badge :variant="$p->is_active ? 'success' : 'slate'">{{ $p->is_active ? 'Aktif' : 'Nonaktif' }}</x-badge>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="flex items-center gap-1">
+                                <x-button :href="route('pengumuman.show', $p)" variant="ghost" size="icon" title="Lihat"><x-icon name="eye" class="h-4 w-4" /></x-button>
+                                @if ($isAdmin)
+                                    <x-button :href="route('pengumuman.edit', $p)" variant="ghost" size="icon" title="Edit"><x-icon name="edit" class="h-4 w-4" /></x-button>
+                                    <x-confirm-delete :action="route('pengumuman.destroy', $p)" />
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+            </x-table>
+        </div>
+        {{-- Mobile --}}
+        <div class="divide-y divide-slate-100 dark:divide-slate-700/60 md:hidden">
+            @foreach ($pengumuman as $p)
+                <div class="p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-medium text-slate-900 dark:text-white truncate">{{ $p->judul }}</p>
+                            <p class="text-sm text-slate-500">{{ $p->pembuat->nama ?? '-' }}</p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1">
+                            <x-button :href="route('pengumuman.show', $p)" variant="ghost" size="icon"><x-icon name="eye" class="h-4 w-4" /></x-button>
+                            @if ($isAdmin)
+                                <x-button :href="route('pengumuman.edit', $p)" variant="ghost" size="icon"><x-icon name="edit" class="h-4 w-4" /></x-button>
+                                <x-confirm-delete :action="route('pengumuman.destroy', $p)" />
+                            @endif
+                        </div>
+                    </div>
+                    <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        <div><dt class="text-xs text-slate-400">Target</dt><dd class="text-slate-700 dark:text-slate-300">{{ $p->target_role ?? 'semua' }}</dd></div>
+                        <div><dt class="text-xs text-slate-400">Tanggal Publish</dt><dd class="text-slate-700 dark:text-slate-300">{{ optional($p->tanggal_publish)->format('d M Y') ?? '-' }}</dd></div>
+                        <div><dt class="text-xs text-slate-400">Status</dt><dd class="text-slate-700 dark:text-slate-300">{{ $p->is_active ? 'Aktif' : 'Nonaktif' }}</dd></div>
+                    </dl>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <div class="p-6"><x-empty-state icon="pengumuman" title="Belum ada pengumuman" description="Pengumuman akan muncul di sini." /></div>
+    @endif
+</x-card>
+
+@if ($pengumuman->hasPages())
+    <div class="mt-4">{{ $pengumuman->links() }}</div>
+@endif
 @endsection

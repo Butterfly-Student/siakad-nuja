@@ -4,40 +4,39 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\JadwalPelajaranRequest;
 use App\Models\Guru;
 use App\Models\JadwalPelajaran;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class JadwalPelajaranController extends Controller
 {
     public function index(): View
     {
         $jadwal = JadwalPelajaran::with(['kelas', 'mapel', 'guru'])
-            ->orderBy('hari')
+            ->when(request('kelas_id'), fn ($query, $id) => $query->where('kelas_id', $id))
+            ->when(request('hari'), fn ($query, $hari) => $query->where('hari', $hari))
+            ->orderByRaw("FIELD(hari, 'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')")
             ->orderBy('jam_ke')
-            ->paginate(15);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('jadwal.index', compact('jadwal'));
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+
+        return view('jadwal.index', compact('jadwal', 'kelasList'));
     }
 
     public function create(): View
     {
-        return view('jadwal.create', [
-            'kelas' => Kelas::orderBy('nama_kelas')->get(),
-            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
-            'guru' => Guru::orderBy('nama_lengkap')->get(),
-        ]);
+        return view('jadwal.create', $this->formData());
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(JadwalPelajaranRequest $request): RedirectResponse
     {
-        $validated = $this->validated($request);
-
-        JadwalPelajaran::create($validated);
+        JadwalPelajaran::create($request->validated());
 
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil ditambahkan.');
     }
@@ -51,19 +50,12 @@ class JadwalPelajaranController extends Controller
 
     public function edit(JadwalPelajaran $jadwal): View
     {
-        return view('jadwal.edit', [
-            'jadwal' => $jadwal,
-            'kelas' => Kelas::orderBy('nama_kelas')->get(),
-            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
-            'guru' => Guru::orderBy('nama_lengkap')->get(),
-        ]);
+        return view('jadwal.edit', ['jadwal' => $jadwal] + $this->formData());
     }
 
-    public function update(Request $request, JadwalPelajaran $jadwal): RedirectResponse
+    public function update(JadwalPelajaranRequest $request, JadwalPelajaran $jadwal): RedirectResponse
     {
-        $validated = $this->validated($request);
-
-        $jadwal->update($validated);
+        $jadwal->update($request->validated());
 
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil diperbarui.');
     }
@@ -75,18 +67,15 @@ class JadwalPelajaranController extends Controller
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil dihapus.');
     }
 
-    private function validated(Request $request): array
+    /**
+     * @return array<string, mixed>
+     */
+    private function formData(): array
     {
-        return $request->validate([
-            'kelas_id' => 'required|exists:kelas,id',
-            'mapel_id' => 'required|exists:mata_pelajaran,id',
-            'guru_id' => 'required|exists:guru,id',
-            'hari' => 'required|string|max:15',
-            'jam_ke' => 'required|integer|min:1|max:15',
-            'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'ruangan' => 'nullable|string|max:50',
-            'tahun_ajaran' => 'required|string|max:15',
-        ]);
+        return [
+            'kelas' => Kelas::orderBy('nama_kelas')->get(),
+            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
+            'guru' => Guru::orderBy('nama_lengkap')->get(),
+        ];
     }
 }

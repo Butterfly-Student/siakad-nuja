@@ -1,47 +1,32 @@
-@csrf
-<div class="row g-3">
-    <div class="col-md-6">
-        <label class="form-label">Siswa</label>
-        <select name="siswa_id" class="form-select" required>
-            <option value="">-- Pilih Siswa --</option>
-            @foreach ($siswa as $s)
-                <option value="{{ $s->id }}" @selected(old('siswa_id', $orangTua->siswa_id ?? null) == $s->id)>{{ $s->nama_lengkap }}</option>
-            @endforeach
-        </select>
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <x-form.select label="Siswa" name="siswa_id" :selected="old('siswa_id', $orangTua->siswa_id ?? '')" required>
+        @foreach ($siswa as $s)
+            <option value="{{ $s->id }}" @selected(old('siswa_id', $orangTua->siswa_id ?? '') == $s->id)>{{ $s->nama_lengkap }}</option>
+        @endforeach
+    </x-form.select>
+
+    <x-form.input label="Nama" name="nama" :value="$orangTua->nama ?? ''" required />
+
+    <x-form.select label="Hubungan" name="hubungan" :selected="old('hubungan', $orangTua->hubungan ?? '')">
+        @foreach (['Ayah', 'Ibu', 'Wali'] as $h)
+            <option value="{{ $h }}" @selected(old('hubungan', $orangTua->hubungan ?? '') === $h)>{{ $h }}</option>
+        @endforeach
+    </x-form.select>
+
+    <x-form.input label="No. HP" name="no_hp" :value="$orangTua->no_hp ?? ''" />
+
+    <x-form.input label="Pekerjaan" name="pekerjaan" :value="$orangTua->pekerjaan ?? ''" />
+
+    <div class="sm:col-span-2">
+        <x-form.textarea label="Alamat" name="alamat" :value="$orangTua->alamat ?? ''" rows="3" />
     </div>
-    <div class="col-md-6">
-        <label class="form-label">Nama</label>
-        <input type="text" name="nama" class="form-control" value="{{ old('nama', $orangTua->nama ?? '') }}" required>
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Hubungan</label>
-        <select name="hubungan" class="form-select">
-            <option value="">--</option>
-            @foreach (['Ayah','Ibu','Wali'] as $h)
-                <option value="{{ $h }}" @selected(old('hubungan', $orangTua->hubungan ?? '') === $h)>{{ $h }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">No HP</label>
-        <input type="text" name="no_hp" class="form-control" value="{{ old('no_hp', $orangTua->no_hp ?? '') }}">
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Pekerjaan</label>
-        <input type="text" name="pekerjaan" class="form-control" value="{{ old('pekerjaan', $orangTua->pekerjaan ?? '') }}">
-    </div>
-    <div class="col-md-12">
-        <label class="form-label">Alamat</label>
-        <textarea name="alamat" class="form-control" rows="3">{{ old('alamat', $orangTua->alamat ?? '') }}</textarea>
-    </div>
-    <div class="col-md-12 form-check ms-3">
-        <input type="hidden" name="is_kontak_utama" value="0">
-        <input type="checkbox" name="is_kontak_utama" value="1" class="form-check-input" id="kontakUtama"
-            {{ old('is_kontak_utama', $orangTua->is_kontak_utama ?? false) ? 'checked' : '' }}>
-        <label for="kontakUtama" class="form-check-label">Jadikan kontak utama</label>
+
+    <div class="sm:col-span-2">
+        <x-form.checkbox label="Jadikan kontak utama" name="is_kontak_utama" :checked="old('is_kontak_utama', $orangTua->is_kontak_utama ?? false)" />
     </div>
 </div>
-<div class="mt-4">
-    <button class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
-    <a href="{{ route('orang-tua.index') }}" class="btn btn-secondary">Batal</a>
+
+<div class="flex items-center gap-3 pt-6">
+    <x-button type="submit" variant="primary"><x-icon name="check" class="h-4 w-4" /> Simpan</x-button>
+    <x-button variant="secondary" :href="route('orang-tua.index')">Batal</x-button>
 </div>

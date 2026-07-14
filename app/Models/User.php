@@ -15,6 +15,9 @@ class User extends Authenticatable
     use HasFactory;
     use Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_GURU = 'guru';
+
     protected $fillable = [
         'nama',
         'email',
@@ -40,6 +43,21 @@ class User extends Authenticatable
     public function getNameAttribute(): string
     {
         return $this->attributes['nama'] ?? '';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isGuru(): bool
+    {
+        return $this->role === self::ROLE_GURU;
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
     }
 
     public function guru(): HasOne

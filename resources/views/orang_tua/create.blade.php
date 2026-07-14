@@ -1,10 +1,14 @@
 @extends('layouts.app')
+
 @section('title', 'Tambah Orang Tua')
+
 @section('content')
-<h3 class="mb-3">Tambah Orang Tua</h3>
-<div class="card"><div class="card-body">
+<x-page-header title="Tambah Orang Tua" subtitle="Lengkapi data orang tua / wali baru." />
+
+<x-card>
     <form method="POST" action="{{ route('orang-tua.store') }}">
+        @csrf
         @include('orang_tua._form')
     </form>
-</div></div>
+</x-card>
 @endsection

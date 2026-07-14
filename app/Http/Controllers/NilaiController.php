@@ -4,39 +4,64 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\NilaiRequest;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Nilai;
 use App\Models\Siswa;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class NilaiController extends Controller
 {
     public function index(): View
     {
-        $nilai = Nilai::with(['siswa', 'mapel', 'kelas'])
-            ->orderByDesc('id')
-            ->paginate(15);
+        $user = request()->user();
 
-        return view('nilai.index', compact('nilai'));
+        $nilai = Nilai::with(['siswa', 'mapel', 'kelas'])
+            ->when($user->isGuru(), function ($query) use ($user): void {
+                // Guru hanya melihat nilai kelas/mapel yang ia ampu atau ia walikan.
+                $guru = $user->guru;
+                $kelasMapel = $guru?->jadwal()->get(['kelas_id', 'mapel_id']) ?? collect();
+                $kelasWali = $guru?->kelasWali()->pluck('id') ?? collect();
+
+                $query->where(function ($q) use ($kelasMapel, $kelasWali): void {
+                    foreach ($kelasMapel as $km) {
+                        $q->orWhere(fn ($sub) => $sub->where('kelas_id', $km->kelas_id)->where('mapel_id', $km->mapel_id));
+                    }
+                    if ($kelasWali->isNotEmpty()) {
+                        $q->orWhereIn('kelas_id', $kelasWali->all());
+                    }
+                    if ($kelasMapel->isEmpty() && $kelasWali->isEmpty()) {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            })
+            ->when(request('kelas_id'), fn ($query, $id) => $query->where('kelas_id', $id))
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+
+        return view('nilai.index', compact('nilai', 'kelasList'));
     }
 
     public function create(): View
     {
-        return view('nilai.create', [
-            'siswa' => Siswa::orderBy('nama_lengkap')->get(),
-            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
-            'kelas' => Kelas::orderBy('nama_kelas')->get(),
-        ]);
+        $this->authorize('create', Nilai::class);
+
+        return view('nilai.create', $this->formData());
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(NilaiRequest $request): RedirectResponse
     {
-        $validated = $this->validated($request);
-        $validated['nilai_akhir'] = $this->hitungNilaiAkhir($validated);
-        $validated['predikat'] = $this->hitungPredikat($validated['nilai_akhir']);
+        $validated = $request->validated();
+
+        $this->authorize('create', Nilai::class);
+        $this->authorizeScope((int) $validated['kelas_id'], (int) $validated['mapel_id']);
+
+        $validated = $this->withCalculatedGrades($validated);
 
         Nilai::create($validated);
 
@@ -45,6 +70,8 @@ class NilaiController extends Controller
 
     public function show(Nilai $nilai): View
     {
+        $this->authorize('view', $nilai);
+
         $nilai->load('siswa', 'mapel', 'kelas');
 
         return view('nilai.show', compact('nilai'));
@@ -52,19 +79,19 @@ class NilaiController extends Controller
 
     public function edit(Nilai $nilai): View
     {
-        return view('nilai.edit', [
-            'nilai' => $nilai,
-            'siswa' => Siswa::orderBy('nama_lengkap')->get(),
-            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
-            'kelas' => Kelas::orderBy('nama_kelas')->get(),
-        ]);
+        $this->authorize('update', $nilai);
+
+        return view('nilai.edit', ['nilai' => $nilai] + $this->formData());
     }
 
-    public function update(Request $request, Nilai $nilai): RedirectResponse
+    public function update(NilaiRequest $request, Nilai $nilai): RedirectResponse
     {
-        $validated = $this->validated($request);
-        $validated['nilai_akhir'] = $this->hitungNilaiAkhir($validated);
-        $validated['predikat'] = $this->hitungPredikat($validated['nilai_akhir']);
+        $this->authorize('update', $nilai);
+
+        $validated = $request->validated();
+        $this->authorizeScope((int) $validated['kelas_id'], (int) $validated['mapel_id']);
+
+        $validated = $this->withCalculatedGrades($validated);
 
         $nilai->update($validated);
 
@@ -73,50 +100,49 @@ class NilaiController extends Controller
 
     public function destroy(Nilai $nilai): RedirectResponse
     {
+        $this->authorize('delete', $nilai);
+
         $nilai->delete();
 
         return redirect()->route('nilai.index')->with('success', 'Nilai berhasil dihapus.');
     }
 
-    private function validated(Request $request): array
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withCalculatedGrades(array $data): array
     {
-        return $request->validate([
-            'siswa_id' => 'required|exists:siswa,id',
-            'mapel_id' => 'required|exists:mata_pelajaran,id',
-            'kelas_id' => 'required|exists:kelas,id',
-            'semester' => 'required|string|max:10',
-            'tahun_ajaran' => 'required|string|max:15',
-            'nilai_harian' => 'nullable|numeric|min:0|max:100',
-            'nilai_uts' => 'nullable|numeric|min:0|max:100',
-            'nilai_uas' => 'nullable|numeric|min:0|max:100',
-        ]);
+        $akhir = Nilai::hitungNilaiAkhir(
+            $data['nilai_harian'] ?? null,
+            $data['nilai_uts'] ?? null,
+            $data['nilai_uas'] ?? null,
+        );
+
+        $data['nilai_akhir'] = $akhir;
+        $data['predikat'] = Nilai::hitungPredikat($akhir);
+
+        return $data;
     }
 
-    private function hitungNilaiAkhir(array $data): ?float
+    /**
+     * Pastikan guru hanya menyimpan nilai untuk kelas/mapel miliknya.
+     */
+    private function authorizeScope(int $kelasId, int $mapelId): void
     {
-        $harian = (float) ($data['nilai_harian'] ?? 0);
-        $uts = (float) ($data['nilai_uts'] ?? 0);
-        $uas = (float) ($data['nilai_uas'] ?? 0);
-
-        if ($harian === 0.0 && $uts === 0.0 && $uas === 0.0) {
-            return null;
-        }
-
-        return round(($harian * 0.3) + ($uts * 0.3) + ($uas * 0.4), 2);
+        $temp = new Nilai(['kelas_id' => $kelasId, 'mapel_id' => $mapelId]);
+        $this->authorize('update', $temp);
     }
 
-    private function hitungPredikat(?float $nilai): ?string
+    /**
+     * @return array<string, mixed>
+     */
+    private function formData(): array
     {
-        if ($nilai === null) {
-            return null;
-        }
-
-        return match (true) {
-            $nilai >= 90 => 'A',
-            $nilai >= 80 => 'B',
-            $nilai >= 70 => 'C',
-            $nilai >= 60 => 'D',
-            default => 'E',
-        };
+        return [
+            'siswa' => Siswa::orderBy('nama_lengkap')->get(),
+            'mapel' => MataPelajaran::orderBy('nama_mapel')->get(),
+            'kelas' => Kelas::orderBy('nama_kelas')->get(),
+        ];
     }
 }

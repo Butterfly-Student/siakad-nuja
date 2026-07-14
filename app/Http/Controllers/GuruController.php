@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GuruRequest;
 use App\Models\Guru;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -16,7 +16,14 @@ class GuruController extends Controller
 {
     public function index(): View
     {
-        $guru = Guru::with('user')->orderBy('nama_lengkap')->paginate(15);
+        $guru = Guru::with('user')
+            ->when(request('q'), function ($query, string $q): void {
+                $query->where('nama_lengkap', 'like', "%{$q}%")
+                    ->orWhere('nip', 'like', "%{$q}%");
+            })
+            ->orderBy('nama_lengkap')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('guru.index', compact('guru'));
     }
@@ -26,23 +33,16 @@ class GuruController extends Controller
         return view('guru.create');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(GuruRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'nama_lengkap' => 'required|string|max:150',
-            'nip' => 'required|string|max:30|unique:guru,nip',
-            'email' => 'required|email|max:150|unique:users,email',
-            'password' => 'required|string|min:8',
-            'jabatan' => 'nullable|string|max:50',
-            'no_hp' => 'nullable|string|max:20',
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated): void {
             $user = User::create([
                 'nama' => $validated['nama_lengkap'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'role' => 'guru',
+                'role' => User::ROLE_GURU,
                 'no_hp' => $validated['no_hp'] ?? null,
                 'is_active' => true,
             ]);
@@ -61,7 +61,7 @@ class GuruController extends Controller
 
     public function show(Guru $guru): View
     {
-        $guru->load('user', 'kelasWali', 'jadwal');
+        $guru->load('user', 'kelasWali', 'jadwal.mapel', 'jadwal.kelas');
 
         return view('guru.show', compact('guru'));
     }
@@ -73,22 +73,22 @@ class GuruController extends Controller
         return view('guru.edit', compact('guru'));
     }
 
-    public function update(Request $request, Guru $guru): RedirectResponse
+    public function update(GuruRequest $request, Guru $guru): RedirectResponse
     {
-        $validated = $request->validate([
-            'nama_lengkap' => 'required|string|max:150',
-            'nip' => 'required|string|max:30|unique:guru,nip,' . $guru->id,
-            'email' => 'required|email|max:150|unique:users,email,' . $guru->user_id,
-            'jabatan' => 'nullable|string|max:50',
-            'no_hp' => 'nullable|string|max:20',
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($guru, $validated): void {
-            $guru->user->update([
+            $userData = [
                 'nama' => $validated['nama_lengkap'],
                 'email' => $validated['email'],
                 'no_hp' => $validated['no_hp'] ?? null,
-            ]);
+            ];
+
+            if (! empty($validated['password'])) {
+                $userData['password'] = Hash::make($validated['password']);
+            }
+
+            $guru->user->update($userData);
 
             $guru->update([
                 'nip' => $validated['nip'],

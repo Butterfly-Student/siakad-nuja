@@ -1,59 +1,88 @@
 @extends('layouts.app')
-@section('title', 'Detail Siswa')
-@section('content')
-<h3 class="mb-3">Detail Siswa</h3>
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-3"><div class="card-header bg-white"><h6 class="mb-0">Data Diri</h6></div><div class="card-body">
-            <table class="table">
-                <tr><th width="180">NIS</th><td>{{ $siswa->nis }}</td></tr>
-                <tr><th>Nama</th><td>{{ $siswa->nama_lengkap }}</td></tr>
-                <tr><th>Kelas</th><td>{{ $siswa->kelas->nama_kelas ?? '-' }}</td></tr>
-                <tr><th>JK</th><td>{{ $siswa->jenis_kelamin ?? '-' }}</td></tr>
-                <tr><th>Tanggal Lahir</th><td>{{ optional($siswa->tanggal_lahir)->format('d M Y') ?? '-' }}</td></tr>
-                <tr><th>Tahun Masuk</th><td>{{ $siswa->tahun_masuk }}</td></tr>
-                <tr><th>Status</th><td>{{ $siswa->status ?? '-' }}</td></tr>
-                <tr><th>Alamat</th><td>{{ $siswa->alamat ?? '-' }}</td></tr>
-            </table>
-        </div></div>
-    </div>
-    <div class="col-md-6">
-        <div class="card mb-3"><div class="card-header bg-white"><h6 class="mb-0">Orang Tua / Wali</h6></div><div class="card-body">
-            <ul class="list-group">
-                @forelse ($siswa->orangTua as $ot)
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>{{ $ot->nama }}</strong>
-                                <div class="small text-muted">{{ $ot->hubungan ?? '-' }} — {{ $ot->no_hp ?? '-' }}</div>
-                            </div>
-                            @if ($ot->is_kontak_utama) <span class="badge bg-primary">Utama</span> @endif
-                        </div>
-                    </li>
-                @empty
-                    <li class="list-group-item text-muted">Belum ada data.</li>
-                @endforelse
-            </ul>
-        </div></div>
 
-        <div class="card"><div class="card-header bg-white"><h6 class="mb-0">Nilai</h6></div><div class="card-body">
-            <table class="table table-sm">
-                <thead><tr><th>Mapel</th><th>Semester</th><th>Akhir</th><th>Predikat</th></tr></thead>
-                <tbody>
-                    @forelse ($siswa->nilai as $n)
+@section('title', 'Detail Siswa')
+
+@section('content')
+@php $isAdmin = auth()->user()->isAdmin(); @endphp
+
+<x-page-header title="Detail Siswa" subtitle="{{ $siswa->nama_lengkap }}">
+    <x-slot:actions>
+        <x-button variant="secondary" :href="route('siswa.index')">Kembali</x-button>
+        @if ($isAdmin)
+            <x-button variant="primary" :href="route('siswa.edit', $siswa)"><x-icon name="edit" class="h-4 w-4" /> Edit</x-button>
+        @endif
+    </x-slot:actions>
+</x-page-header>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    {{-- Identitas --}}
+    <div class="lg:col-span-1">
+        <x-card>
+            <div class="flex flex-col items-center text-center">
+                @if ($siswa->foto)
+                    <img src="{{ asset('storage/' . $siswa->foto) }}" alt="Foto {{ $siswa->nama_lengkap }}"
+                        class="h-24 w-24 rounded-full object-cover ring-2 ring-brand-100 dark:ring-brand-900">
+                @else
+                    <div class="flex h-24 w-24 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/40 text-2xl font-bold text-brand-600 dark:text-brand-300">
+                        {{ strtoupper(substr($siswa->nama_lengkap, 0, 1)) }}
+                    </div>
+                @endif
+                <h3 class="mt-4 text-lg font-semibold text-slate-900 dark:text-white">{{ $siswa->nama_lengkap }}</h3>
+                <p class="text-sm text-slate-500">NIS {{ $siswa->nis }}</p>
+                <div class="mt-3">
+                    @php $stColor = ['Aktif' => 'success', 'Lulus' => 'info', 'Pindah' => 'warning', 'Keluar' => 'danger'][$siswa->status ?? 'Aktif'] ?? 'slate'; @endphp
+                    <x-badge :variant="$stColor">{{ $siswa->status ?? 'Aktif' }}</x-badge>
+                </div>
+            </div>
+
+            <dl class="mt-6 space-y-3 border-t border-slate-100 dark:border-slate-700 pt-4 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-slate-400">Kelas</dt><dd class="text-slate-900 dark:text-white font-medium">{{ $siswa->kelas->nama_kelas ?? '-' }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-400">Jenis Kelamin</dt><dd class="text-slate-700 dark:text-slate-300">{{ $siswa->jenis_kelamin === 'L' ? 'Laki-laki' : ($siswa->jenis_kelamin === 'P' ? 'Perempuan' : '-') }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-400">Tanggal Lahir</dt><dd class="text-slate-700 dark:text-slate-300">{{ optional($siswa->tanggal_lahir)->format('d M Y') ?? '-' }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-400">Tahun Masuk</dt><dd class="text-slate-700 dark:text-slate-300">{{ $siswa->tahun_masuk }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-400">Alamat</dt><dd class="text-right text-slate-700 dark:text-slate-300">{{ $siswa->alamat ?? '-' }}</dd></div>
+            </dl>
+        </x-card>
+    </div>
+
+    {{-- Relasi --}}
+    <div class="space-y-6 lg:col-span-2">
+        <x-card padding="p-0">
+            <x-slot:header><h2 class="text-sm font-semibold text-slate-900 dark:text-white">Orang Tua / Wali</h2></x-slot:header>
+            @if ($siswa->orangTua->isNotEmpty())
+                <ul class="divide-y divide-slate-100 dark:divide-slate-700/60">
+                    @foreach ($siswa->orangTua as $ot)
+                        <li class="flex items-center justify-between gap-3 px-5 py-3 sm:px-6">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ $ot->nama }}</p>
+                                <p class="text-xs text-slate-500">{{ $ot->hubungan ?? '-' }} • {{ $ot->no_hp ?? '-' }}</p>
+                            </div>
+                            @if ($ot->is_kontak_utama) <x-badge variant="brand">Kontak Utama</x-badge> @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <div class="p-6"><x-empty-state icon="orangtua" title="Belum ada data orang tua" /></div>
+            @endif
+        </x-card>
+
+        <x-card padding="p-0">
+            <x-slot:header><h2 class="text-sm font-semibold text-slate-900 dark:text-white">Rekap Nilai</h2></x-slot:header>
+            @if ($siswa->nilai->isNotEmpty())
+                <x-table :headers="['Mapel', 'Semester', 'Akhir', 'Predikat']">
+                    @foreach ($siswa->nilai as $n)
                         <tr>
-                            <td>{{ $n->mapel->nama_mapel ?? '-' }}</td>
-                            <td>{{ $n->semester }}</td>
-                            <td>{{ $n->nilai_akhir }}</td>
-                            <td>{{ $n->predikat }}</td>
+                            <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{{ $n->mapel->nama_mapel ?? '-' }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{{ $n->semester }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ $n->nilai_akhir ?? '-' }}</td>
+                            <td class="px-4 py-3"><x-badge variant="brand">{{ $n->predikat ?? '-' }}</x-badge></td>
                         </tr>
-                    @empty
-                        <tr><td colspan="4" class="text-center text-muted">Belum ada nilai.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div></div>
+                    @endforeach
+                </x-table>
+            @else
+                <div class="p-6"><x-empty-state icon="nilai" title="Belum ada nilai" /></div>
+            @endif
+        </x-card>
     </div>
 </div>
-<a href="{{ route('siswa.index') }}" class="btn btn-secondary">Kembali</a>
 @endsection

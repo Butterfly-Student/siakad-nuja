@@ -51,4 +51,39 @@ class Nilai extends Model
     {
         return $this->belongsTo(Kelas::class, 'kelas_id');
     }
+
+    /**
+     * Hitung nilai akhir berbobot: harian 30%, UTS 30%, UAS 40%.
+     * Mengembalikan null bila ketiga komponen kosong.
+     */
+    public static function hitungNilaiAkhir(?float $harian, ?float $uts, ?float $uas): ?float
+    {
+        $h = (float) ($harian ?? 0);
+        $u = (float) ($uts ?? 0);
+        $a = (float) ($uas ?? 0);
+
+        if ($h === 0.0 && $u === 0.0 && $a === 0.0) {
+            return null;
+        }
+
+        return round(($h * 0.3) + ($u * 0.3) + ($a * 0.4), 2);
+    }
+
+    /**
+     * Tentukan predikat huruf dari nilai akhir.
+     */
+    public static function hitungPredikat(?float $nilaiAkhir): ?string
+    {
+        if ($nilaiAkhir === null) {
+            return null;
+        }
+
+        return match (true) {
+            $nilaiAkhir >= 90 => 'A',
+            $nilaiAkhir >= 80 => 'B',
+            $nilaiAkhir >= 70 => 'C',
+            $nilaiAkhir >= 60 => 'D',
+            default => 'E',
+        };
+    }
 }

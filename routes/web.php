@@ -8,16 +8,20 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\JadwalPelajaranController;
 use App\Http\Controllers\KelasController;
+use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\OrangTuaController;
 use App\Http\Controllers\PengumumanController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SiswaController;
+use App\Http\Controllers\TagihanController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
-});
+    return view('welcome');
+})->name('landing');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -29,17 +33,74 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::resource('guru', GuruController::class);
-    Route::resource('kelas', KelasController::class);
-    Route::resource('mata-pelajaran', MataPelajaranController::class)->parameters([
-        'mata-pelajaran' => 'mataPelajaran',
-    ]);
-    Route::resource('siswa', SiswaController::class);
-    Route::resource('jadwal', JadwalPelajaranController::class);
-    Route::resource('pengumuman', PengumumanController::class);
-    Route::resource('orang-tua', OrangTuaController::class)->parameters([
-        'orang-tua' => 'orangTua',
-    ]);
-    Route::resource('nilai', NilaiController::class);
-    Route::resource('absensi', AbsensiController::class);
+    // Profil & ganti password (semua peran)
+    Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modul akademik guru: input Nilai & Absensi (admin + guru)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:admin,guru')->group(function (): void {
+        Route::resource('nilai', NilaiController::class);
+
+        // Absensi: alur entri massal (bukan resource standar)
+        Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');
+        Route::get('absensi/create', [AbsensiController::class, 'create'])->name('absensi.create');
+        Route::get('absensi/roster', [AbsensiController::class, 'roster'])->name('absensi.roster');
+        Route::post('absensi', [AbsensiController::class, 'store'])->name('absensi.store');
+        Route::get('absensi/{absensi}', [AbsensiController::class, 'show'])->name('absensi.show');
+        Route::delete('absensi/{absensi}', [AbsensiController::class, 'destroy'])->name('absensi.destroy');
+
+        // Laporan Akademik (C4, C5, C6)
+        Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
+        Route::get('laporan/kehadiran', [LaporanController::class, 'kehadiran'])->name('laporan.kehadiran');
+        Route::get('laporan/nilai', [LaporanController::class, 'nilai'])->name('laporan.nilai');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manajemen data master & akun (admin saja)
+    |--------------------------------------------------------------------------
+    | Didaftarkan SEBELUM rute read-only agar `.../create` & `.../{id}/edit`
+    | tidak tertangkap oleh rute show (`.../{id}`) yang berpola sama.
+    */
+    Route::middleware('role:admin')->group(function (): void {
+        Route::resource('siswa', SiswaController::class)->except(['index', 'show']);
+        Route::resource('kelas', KelasController::class)->except(['index', 'show']);
+        Route::resource('mata-pelajaran', MataPelajaranController::class)
+            ->except(['index', 'show'])
+            ->parameters(['mata-pelajaran' => 'mataPelajaran']);
+        Route::resource('jadwal', JadwalPelajaranController::class)->except(['index', 'show']);
+        Route::resource('pengumuman', PengumumanController::class)->except(['index', 'show']);
+
+        Route::resource('guru', GuruController::class);
+        Route::resource('orang-tua', OrangTuaController::class)->parameters([
+            'orang-tua' => 'orangTua',
+        ]);
+        Route::resource('users', UserController::class)->except(['show']);
+
+        // Tagihan & Pembayaran (admin only)
+        Route::resource('tagihan', TagihanController::class);
+        Route::post('tagihan/pembayaran/{pembayaran}/verifikasi', [TagihanController::class, 'verifikasi'])
+            ->name('tagihan.verifikasi');
+        Route::post('tagihan/pembayaran/{pembayaran}/tolak', [TagihanController::class, 'tolak'])
+            ->name('tagihan.tolak');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Data master read-only untuk guru & admin (index/show)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:admin,guru')->group(function (): void {
+        Route::resource('siswa', SiswaController::class)->only(['index', 'show']);
+        Route::resource('kelas', KelasController::class)->only(['index', 'show']);
+        Route::resource('mata-pelajaran', MataPelajaranController::class)
+            ->only(['index', 'show'])
+            ->parameters(['mata-pelajaran' => 'mataPelajaran']);
+        Route::resource('jadwal', JadwalPelajaranController::class)->only(['index', 'show']);
+        Route::resource('pengumuman', PengumumanController::class)->only(['index', 'show']);
+    });
 });

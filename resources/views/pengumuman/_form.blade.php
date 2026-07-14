@@ -1,37 +1,27 @@
-@csrf
-<div class="row g-3">
-    <div class="col-md-12">
-        <label class="form-label">Judul</label>
-        <input type="text" name="judul" class="form-control" value="{{ old('judul', $pengumuman->judul ?? '') }}" required>
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <div class="sm:col-span-2">
+        <x-form.input label="Judul" name="judul" :value="$pengumuman->judul ?? ''" required />
     </div>
-    <div class="col-md-12">
-        <label class="form-label">Konten</label>
-        <textarea name="konten" class="form-control" rows="6" required>{{ old('konten', $pengumuman->konten ?? '') }}</textarea>
+
+    <div class="sm:col-span-2">
+        <x-form.textarea label="Konten" name="konten" :value="$pengumuman->konten ?? ''" rows="6" required />
     </div>
-    <div class="col-md-4">
-        <label class="form-label">Target Role</label>
-        <select name="target_role" class="form-select">
-            <option value="">Semua</option>
-            @foreach (['admin','guru','siswa','orang_tua'] as $r)
-                <option value="{{ $r }}" @selected(old('target_role', $pengumuman->target_role ?? '') === $r)>{{ ucfirst(str_replace('_',' ',$r)) }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Tanggal Publish</label>
-        <input type="date" name="tanggal_publish" class="form-control" value="{{ old('tanggal_publish', optional($pengumuman->tanggal_publish ?? null)->format('Y-m-d')) }}">
-    </div>
-    <div class="col-md-4">
-        <label class="form-label d-block">Status</label>
-        <div class="form-check form-switch mt-2">
-            <input type="hidden" name="is_active" value="0">
-            <input type="checkbox" name="is_active" value="1" class="form-check-input" id="isActive"
-                {{ old('is_active', ($pengumuman->is_active ?? true)) ? 'checked' : '' }}>
-            <label for="isActive" class="form-check-label">Aktif</label>
-        </div>
+
+    <x-form.select label="Target" name="target_role" :selected="old('target_role', $pengumuman->target_role ?? 'semua')" :placeholder="false">
+        @foreach (['semua' => 'Semua', 'admin' => 'Admin', 'guru' => 'Guru'] as $val => $label)
+            <option value="{{ $val }}" @selected(old('target_role', $pengumuman->target_role ?? 'semua') === $val)>{{ $label }}</option>
+        @endforeach
+    </x-form.select>
+
+    <x-form.input label="Tanggal Publish" name="tanggal_publish" type="date"
+        :value="isset($pengumuman) ? optional($pengumuman->tanggal_publish)->format('Y-m-d') : ''" />
+
+    <div class="sm:col-span-2">
+        <x-form.checkbox label="Aktifkan pengumuman" name="is_active" :checked="old('is_active', $pengumuman->is_active ?? true)" />
     </div>
 </div>
-<div class="mt-4">
-    <button class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
-    <a href="{{ route('pengumuman.index') }}" class="btn btn-secondary">Batal</a>
+
+<div class="flex items-center gap-3 pt-6">
+    <x-button type="submit" variant="primary"><x-icon name="check" class="h-4 w-4" /> Simpan</x-button>
+    <x-button variant="secondary" :href="route('pengumuman.index')">Batal</x-button>
 </div>

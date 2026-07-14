@@ -1,10 +1,14 @@
 @extends('layouts.app')
+
 @section('title', 'Tambah Mata Pelajaran')
+
 @section('content')
-<h3 class="mb-3">Tambah Mata Pelajaran</h3>
-<div class="card"><div class="card-body">
+<x-page-header title="Tambah Mata Pelajaran" subtitle="Lengkapi data mata pelajaran baru." />
+
+<x-card>
     <form method="POST" action="{{ route('mata-pelajaran.store') }}">
+        @csrf
         @include('mata_pelajaran._form')
     </form>
-</div></div>
+</x-card>
 @endsection

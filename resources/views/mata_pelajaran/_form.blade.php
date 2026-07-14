@@ -1,31 +1,21 @@
-@csrf
-<div class="row g-3">
-    <div class="col-md-4">
-        <label class="form-label">Kode Mapel</label>
-        <input type="text" name="kode_mapel" class="form-control" value="{{ old('kode_mapel', $mapel->kode_mapel ?? '') }}" required>
-    </div>
-    <div class="col-md-5">
-        <label class="form-label">Nama Mapel</label>
-        <input type="text" name="nama_mapel" class="form-control" value="{{ old('nama_mapel', $mapel->nama_mapel ?? '') }}" required>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Jenjang</label>
-        <select name="jenjang" class="form-select" required>
-            @foreach (['SD','SMP','SMA','SMK'] as $j)
-                <option value="{{ $j }}" @selected(old('jenjang', $mapel->jenjang ?? '') === $j)>{{ $j }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">KKM</label>
-        <input type="number" name="kkm" class="form-control" value="{{ old('kkm', $mapel->kkm ?? '') }}">
-    </div>
-    <div class="col-md-12">
-        <label class="form-label">Deskripsi</label>
-        <textarea name="deskripsi" class="form-control" rows="3">{{ old('deskripsi', $mapel->deskripsi ?? '') }}</textarea>
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <x-form.input label="Kode Mapel" name="kode_mapel" :value="$mapel->kode_mapel ?? ''" required />
+    <x-form.input label="Nama Mapel" name="nama_mapel" :value="$mapel->nama_mapel ?? ''" required />
+
+    <x-form.select label="Jenjang" name="jenjang" :selected="old('jenjang', $mapel->jenjang ?? '')" required>
+        @foreach (['SD', 'SMP', 'SMA', 'SMK', 'MI', 'MTs', 'MA'] as $j)
+            <option value="{{ $j }}" @selected(old('jenjang', $mapel->jenjang ?? '') === $j)>{{ $j }}</option>
+        @endforeach
+    </x-form.select>
+
+    <x-form.input label="KKM" name="kkm" type="number" :value="$mapel->kkm ?? ''" min="0" max="100" />
+
+    <div class="sm:col-span-2">
+        <x-form.textarea label="Deskripsi" name="deskripsi" :value="$mapel->deskripsi ?? ''" rows="3" />
     </div>
 </div>
-<div class="mt-4">
-    <button class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
-    <a href="{{ route('mata-pelajaran.index') }}" class="btn btn-secondary">Batal</a>
+
+<div class="flex items-center gap-3 pt-6">
+    <x-button type="submit" variant="primary"><x-icon name="check" class="h-4 w-4" /> Simpan</x-button>
+    <x-button variant="secondary" :href="route('mata-pelajaran.index')">Batal</x-button>
 </div>

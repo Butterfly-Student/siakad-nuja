@@ -4,19 +4,30 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SiswaRequest;
 use App\Models\Kelas;
 use App\Models\Siswa;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SiswaController extends Controller
 {
     public function index(): View
     {
-        $siswa = Siswa::with('kelas')->orderBy('nama_lengkap')->paginate(15);
+        $siswa = Siswa::with('kelas')
+            ->when(request('q'), function ($query, string $q): void {
+                $query->where('nama_lengkap', 'like', "%{$q}%")
+                    ->orWhere('nis', 'like', "%{$q}%");
+            })
+            ->when(request('kelas_id'), fn ($query, $id) => $query->where('kelas_id', $id))
+            ->orderBy('nama_lengkap')
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('siswa.index', compact('siswa'));
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+
+        return view('siswa.index', compact('siswa', 'kelasList'));
     }
 
     public function create(): View
@@ -26,18 +37,13 @@ class SiswaController extends Controller
         return view('siswa.create', compact('kelas'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SiswaRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'nis' => 'required|string|max:30|unique:siswa,nis',
-            'nama_lengkap' => 'required|string|max:150',
-            'kelas_id' => 'required|exists:kelas,id',
-            'tanggal_lahir' => 'nullable|date',
-            'jenis_kelamin' => 'nullable|in:L,P,Laki-laki,Perempuan',
-            'alamat' => 'nullable|string',
-            'status' => 'nullable|string|max:20',
-            'tahun_masuk' => 'required|integer|min:1990|max:2100',
-        ]);
+        $validated = $request->validated();
+
+        if ($request->hasFile('foto')) {
+            $validated['foto'] = $request->file('foto')->store('siswa', 'public');
+        }
 
         Siswa::create($validated);
 
@@ -46,7 +52,7 @@ class SiswaController extends Controller
 
     public function show(Siswa $siswa): View
     {
-        $siswa->load('kelas', 'orangTua', 'nilai.mapel');
+        $siswa->load('kelas', 'orangTua', 'nilai.mapel', 'absensi.jadwal.mapel');
 
         return view('siswa.show', compact('siswa'));
     }
@@ -58,18 +64,16 @@ class SiswaController extends Controller
         return view('siswa.edit', compact('siswa', 'kelas'));
     }
 
-    public function update(Request $request, Siswa $siswa): RedirectResponse
+    public function update(SiswaRequest $request, Siswa $siswa): RedirectResponse
     {
-        $validated = $request->validate([
-            'nis' => 'required|string|max:30|unique:siswa,nis,' . $siswa->id,
-            'nama_lengkap' => 'required|string|max:150',
-            'kelas_id' => 'required|exists:kelas,id',
-            'tanggal_lahir' => 'nullable|date',
-            'jenis_kelamin' => 'nullable|in:L,P,Laki-laki,Perempuan',
-            'alamat' => 'nullable|string',
-            'status' => 'nullable|string|max:20',
-            'tahun_masuk' => 'required|integer|min:1990|max:2100',
-        ]);
+        $validated = $request->validated();
+
+        if ($request->hasFile('foto')) {
+            if ($siswa->foto) {
+                Storage::disk('public')->delete($siswa->foto);
+            }
+            $validated['foto'] = $request->file('foto')->store('siswa', 'public');
+        }
 
         $siswa->update($validated);
 
@@ -78,6 +82,10 @@ class SiswaController extends Controller
 
     public function destroy(Siswa $siswa): RedirectResponse
     {
+        if ($siswa->foto) {
+            Storage::disk('public')->delete($siswa->foto);
+        }
+
         $siswa->delete();
 
         return redirect()->route('siswa.index')->with('success', 'Siswa berhasil dihapus.');

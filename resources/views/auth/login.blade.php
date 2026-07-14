@@ -1,38 +1,43 @@
 @extends('layouts.app')
 
-@section('title', 'Login')
+@section('title', 'Masuk')
 
 @section('content')
-<div class="row justify-content-center align-items-center" style="min-height: 90vh;">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <i class="bi bi-mortarboard-fill" style="font-size: 3rem; color: #6366f1;"></i>
-                    <h3 class="mt-2">SIAKAD NUJA</h3>
-                    <p class="text-muted small">Sistem Informasi Akademik</p>
+<div class="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 px-4 py-12">
+    <div class="w-full max-w-md">
+        <div class="mb-8 flex flex-col items-center text-center">
+            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/30">
+                <x-icon name="mapel" class="h-7 w-7" />
+            </div>
+            <h1 class="mt-4 text-2xl font-bold text-slate-900 dark:text-white">SIAKAD NUJA</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sistem Informasi Akademik Nurul Jadid</p>
+        </div>
+
+        <div class="rounded-2xl bg-white dark:bg-slate-800 p-6 sm:p-8 shadow-sm ring-1 ring-slate-200/70 dark:ring-slate-700/70">
+            @if ($errors->any())
+                <div class="mb-5">
+                    <x-alert type="error">{{ $errors->first() }}</x-alert>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.attempt') }}" class="space-y-5">
+                @csrf
+                <x-form.input label="Email" name="email" type="email" :value="old('email')" required autofocus autocomplete="username" />
+                <x-form.input label="Password" name="password" type="password" required autocomplete="current-password" />
+
+                <div class="flex items-center justify-between">
+                    <x-form.checkbox label="Ingat saya" name="remember" />
                 </div>
 
-                <form method="POST" action="{{ route('login.attempt') }}">
-                    @csrf
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" name="email" id="email" class="form-control" value="{{ old('email') }}" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" name="password" id="password" class="form-control" required>
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" name="remember" id="remember" class="form-check-input">
-                        <label for="remember" class="form-check-label">Ingat saya</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-in-right"></i> Masuk
-                    </button>
-                </form>
-            </div>
+                <x-button type="submit" variant="primary" class="w-full">
+                    <x-icon name="logout" class="h-4 w-4" /> Masuk
+                </x-button>
+            </form>
         </div>
+
+        <p class="mt-6 text-center text-xs text-slate-400">
+            &copy; {{ date('Y') }} SIAKAD NUJA — Akun dibuat oleh administrator.
+        </p>
     </div>
 </div>
 @endsection

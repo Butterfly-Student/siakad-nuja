@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\KelasRequest;
 use App\Models\Guru;
 use App\Models\Kelas;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class KelasController extends Controller
 {
     public function index(): View
     {
-        $kelas = Kelas::with('waliKelas')->orderBy('tingkat')->orderBy('nama_kelas')->paginate(15);
+        $kelas = Kelas::with('waliKelas')
+            ->withCount('siswa')
+            ->when(request('q'), fn ($query, string $q) => $query->where('nama_kelas', 'like', "%{$q}%"))
+            ->orderBy('tingkat')
+            ->orderBy('nama_kelas')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('kelas.index', compact('kelas'));
     }
@@ -26,18 +32,9 @@ class KelasController extends Controller
         return view('kelas.create', compact('guru'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(KelasRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:50',
-            'tingkat' => 'required|string|max:10',
-            'jenjang' => 'required|string|max:20',
-            'tahun_ajaran' => 'required|string|max:15',
-            'wali_kelas_id' => 'nullable|exists:guru,id',
-            'kapasitas' => 'nullable|integer|min:1|max:255',
-        ]);
-
-        Kelas::create($validated);
+        Kelas::create($request->validated());
 
         return redirect()->route('kelas.index')->with('success', 'Kelas berhasil ditambahkan.');
     }
@@ -56,18 +53,9 @@ class KelasController extends Controller
         return view('kelas.edit', ['kelas' => $kela, 'guru' => $guru]);
     }
 
-    public function update(Request $request, Kelas $kela): RedirectResponse
+    public function update(KelasRequest $request, Kelas $kela): RedirectResponse
     {
-        $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:50',
-            'tingkat' => 'required|string|max:10',
-            'jenjang' => 'required|string|max:20',
-            'tahun_ajaran' => 'required|string|max:15',
-            'wali_kelas_id' => 'nullable|exists:guru,id',
-            'kapasitas' => 'nullable|integer|min:1|max:255',
-        ]);
-
-        $kela->update($validated);
+        $kela->update($request->validated());
 
         return redirect()->route('kelas.index')->with('success', 'Kelas berhasil diperbarui.');
     }

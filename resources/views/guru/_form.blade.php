@@ -1,33 +1,16 @@
-@csrf
-<div class="row g-3">
-    <div class="col-md-6">
-        <label class="form-label">NIP</label>
-        <input type="text" name="nip" class="form-control" value="{{ old('nip', $guru->nip ?? '') }}" required>
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">Nama Lengkap</label>
-        <input type="text" name="nama_lengkap" class="form-control" value="{{ old('nama_lengkap', $guru->nama_lengkap ?? '') }}" required>
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control" value="{{ old('email', $guru->user->email ?? '') }}" required>
-    </div>
-    @if (!isset($guru))
-        <div class="col-md-6">
-            <label class="form-label">Password</label>
-            <input type="password" name="password" class="form-control" required>
-        </div>
-    @endif
-    <div class="col-md-6">
-        <label class="form-label">Jabatan</label>
-        <input type="text" name="jabatan" class="form-control" value="{{ old('jabatan', $guru->jabatan ?? '') }}">
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">No HP</label>
-        <input type="text" name="no_hp" class="form-control" value="{{ old('no_hp', $guru->no_hp ?? '') }}">
-    </div>
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <x-form.input label="Nama Lengkap" name="nama_lengkap" :value="$guru->nama_lengkap ?? ''" required />
+    <x-form.input label="NIP" name="nip" :value="$guru->nip ?? ''" required />
+
+    <x-form.input label="Email" name="email" type="email" :value="old('email', $guru->user->email ?? '')" required />
+    <x-form.input label="Password" name="password" type="password"
+        :hint="isset($guru) ? 'Kosongkan bila tidak diubah' : 'Minimal 8 karakter'" />
+
+    <x-form.input label="Jabatan" name="jabatan" :value="$guru->jabatan ?? ''" />
+    <x-form.input label="No. HP" name="no_hp" :value="$guru->no_hp ?? ''" />
 </div>
-<div class="mt-4">
-    <button class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
-    <a href="{{ route('guru.index') }}" class="btn btn-secondary">Batal</a>
+
+<div class="flex items-center gap-3 pt-6">
+    <x-button type="submit" variant="primary"><x-icon name="check" class="h-4 w-4" /> Simpan</x-button>
+    <x-button variant="secondary" :href="route('guru.index')">Batal</x-button>
 </div>

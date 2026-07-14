@@ -1,10 +1,14 @@
 @extends('layouts.app')
+
 @section('title', 'Buat Pengumuman')
+
 @section('content')
-<h3 class="mb-3">Buat Pengumuman</h3>
-<div class="card"><div class="card-body">
+<x-page-header title="Buat Pengumuman" subtitle="Lengkapi informasi pengumuman baru." />
+
+<x-card>
     <form method="POST" action="{{ route('pengumuman.store') }}">
+        @csrf
         @include('pengumuman._form')
     </form>
-</div></div>
+</x-card>
 @endsection

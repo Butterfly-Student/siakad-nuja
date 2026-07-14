@@ -1,11 +1,15 @@
 @extends('layouts.app')
+
 @section('title', 'Edit Jadwal')
+
 @section('content')
-<h3 class="mb-3">Edit Jadwal</h3>
-<div class="card"><div class="card-body">
-    <form method="POST" action="{{ route('jadwal.update', $jadwal) }}">
+<x-page-header title="Edit Jadwal" subtitle="Perbarui data jadwal pelajaran." />
+
+<x-card>
+    <form method="POST" action="{{ route('jadwal.update', $jadwal) }}" class="space-y-6">
+        @csrf
         @method('PUT')
         @include('jadwal._form')
     </form>
-</div></div>
+</x-card>
 @endsection

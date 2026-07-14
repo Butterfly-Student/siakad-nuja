@@ -4,16 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\MataPelajaranRequest;
 use App\Models\MataPelajaran;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class MataPelajaranController extends Controller
 {
     public function index(): View
     {
-        $mapel = MataPelajaran::orderBy('nama_mapel')->paginate(15);
+        $mapel = MataPelajaran::when(request('q'), function ($query, string $q): void {
+            $query->where('nama_mapel', 'like', "%{$q}%")
+                ->orWhere('kode_mapel', 'like', "%{$q}%");
+        })
+            ->orderBy('nama_mapel')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('mata_pelajaran.index', compact('mapel'));
     }
@@ -23,17 +29,9 @@ class MataPelajaranController extends Controller
         return view('mata_pelajaran.create');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(MataPelajaranRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'kode_mapel' => 'required|string|max:20|unique:mata_pelajaran,kode_mapel',
-            'nama_mapel' => 'required|string|max:100',
-            'jenjang' => 'required|string|max:20',
-            'kkm' => 'nullable|integer|min:0|max:100',
-            'deskripsi' => 'nullable|string',
-        ]);
-
-        MataPelajaran::create($validated);
+        MataPelajaran::create($request->validated());
 
         return redirect()->route('mata-pelajaran.index')->with('success', 'Mata pelajaran berhasil ditambahkan.');
     }
@@ -48,17 +46,9 @@ class MataPelajaranController extends Controller
         return view('mata_pelajaran.edit', ['mapel' => $mataPelajaran]);
     }
 
-    public function update(Request $request, MataPelajaran $mataPelajaran): RedirectResponse
+    public function update(MataPelajaranRequest $request, MataPelajaran $mataPelajaran): RedirectResponse
     {
-        $validated = $request->validate([
-            'kode_mapel' => 'required|string|max:20|unique:mata_pelajaran,kode_mapel,' . $mataPelajaran->id,
-            'nama_mapel' => 'required|string|max:100',
-            'jenjang' => 'required|string|max:20',
-            'kkm' => 'nullable|integer|min:0|max:100',
-            'deskripsi' => 'nullable|string',
-        ]);
-
-        $mataPelajaran->update($validated);
+        $mataPelajaran->update($request->validated());
 
         return redirect()->route('mata-pelajaran.index')->with('success', 'Mata pelajaran berhasil diperbarui.');
     }

@@ -1,11 +1,15 @@
 @extends('layouts.app')
+
 @section('title', 'Edit Siswa')
+
 @section('content')
-<h3 class="mb-3">Edit Siswa</h3>
-<div class="card"><div class="card-body">
-    <form method="POST" action="{{ route('siswa.update', $siswa) }}">
+<x-page-header title="Edit Siswa" subtitle="Perbarui data {{ $siswa->nama_lengkap }}." />
+
+<x-card>
+    <form method="POST" action="{{ route('siswa.update', $siswa) }}" enctype="multipart/form-data">
+        @csrf
         @method('PUT')
         @include('siswa._form')
     </form>
-</div></div>
+</x-card>
 @endsection

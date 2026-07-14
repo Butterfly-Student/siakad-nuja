@@ -1,59 +1,175 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SIAKAD NUJA — Sistem Informasi Akademik
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi Sistem Informasi Akademik sekolah (jenjang SMP) untuk mengelola **siswa, guru, kelas, mata pelajaran, jadwal, nilai, absensi, orang tua, dan pengumuman**. Dilengkapi autentikasi & otorisasi peran **Admin** dan **Guru**, landing page publik yang modern, serta antarmuka responsif (mobile-first) dengan mode gelap.
 
-## About Laravel
+Dibangun dengan **Laravel 12 · PHP 8.2+ · MySQL · Tailwind CSS v4 · Alpine.js · Vite**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## ✨ Fitur Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Landing page publik** di `/` — modern, beranimasi, langsung mengarah ke halaman login.
+- **Autentikasi & Otorisasi** peran Admin/Guru berbasis middleware & Policy (tanpa paket pihak ketiga).
+  - Akun nonaktif (`is_active = false`) diblokir saat login.
+  - Registrasi publik dinonaktifkan — akun dibuat oleh Admin.
+- **Manajemen data master** (Admin): siswa, guru, kelas, mapel, jadwal, orang tua, dan akun pengguna.
+- **Nilai otomatis** — `nilai_akhir` (harian 30% · UTS 30% · UAS 40%) & `predikat` dihitung otomatis.
+- **Absensi massal** — pilih jadwal + tanggal, isi kehadiran seluruh siswa satu kelas sekaligus.
+- **Scoping guru** — guru hanya melihat/mengisi nilai & absensi untuk kelas yang diampu atau diwalikan.
+- **Dasbor role-aware** — statistik global untuk Admin; jadwal mengajar hari ini untuk Guru.
+- **UI komponen reusable** (Blade) + tabel responsif (tabel di desktop, kartu di mobile) + dark mode.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 🧩 Persyaratan
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Kebutuhan | Versi |
+|-----------|-------|
+| PHP       | ≥ 8.2 (disarankan 8.4) dengan ekstensi `pdo_mysql`, `mbstring`, `openssl`, `fileinfo` |
+| Composer  | 2.x |
+| Node.js   | ≥ 20 (disarankan 22+) |
+| MySQL / MariaDB | 8.x / 10.4+ |
 
-## Laravel Sponsors
+> Di Windows, [Laragon](https://laragon.org/) sudah menyediakan PHP, MySQL, dan Composer sekaligus.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🚀 Instalasi & Setup
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+# 1. Clone & masuk ke folder proyek
+git clone <url-repo> siakad-nuja
+cd siakad-nuja
 
-## Contributing
+# 2. Install dependency PHP & JavaScript
+composer install
+npm install
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 3. Siapkan file environment
+cp .env.example .env        # Windows: copy .env.example .env
+php artisan key:generate
+```
 
-## Code of Conduct
+Ubah kredensial database di `.env`:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=siakad_nuja
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-## Security Vulnerabilities
+Buat database kosong terlebih dahulu (mis. `siakad_nuja`), lalu:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# 4. Migrasi + data contoh (seeder)
+php artisan migrate:fresh --seed
 
-## License
+# 5. Symlink storage (untuk foto siswa)
+php artisan storage:link
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 6. Build aset front-end
+npm run build
+```
+
+---
+
+## ▶️ Menjalankan Aplikasi
+
+**Mode pengembangan** (jalankan di dua terminal):
+
+```bash
+php artisan serve      # backend  → http://127.0.0.1:8000
+npm run dev            # Vite dev server (hot reload aset)
+```
+
+**Mode produksi / preview build:**
+
+```bash
+npm run build          # kompilasi aset ke public/build
+php artisan serve
+```
+
+Buka `http://127.0.0.1:8000` — Anda akan disambut landing page, lalu klik **Masuk**.
+
+---
+
+## 🔑 Kredensial Default (dari seeder)
+
+| Peran | Email | Password |
+|-------|-------|----------|
+| Admin | `admin@siakadnuja.sch.id` | `password` |
+| Guru  | `guru1@siakadnuja.sch.id` … `guru10@siakadnuja.sch.id` | `password` |
+
+Data contoh mencakup ±168 siswa, 10 guru, 6 kelas, 10 mapel, 180 jadwal, serta nilai & absensi.
+
+---
+
+## 🗂️ Struktur Penting
+
+```
+app/
+├─ Http/
+│  ├─ Controllers/        # 13 controller (master data, nilai, absensi, user, profil, auth)
+│  ├─ Middleware/         # EnsureUserHasRole (alias: role)
+│  └─ Requests/           # FormRequest validasi tiap modul
+├─ Models/                # Eloquent: User, Guru, Siswa, Kelas, dst.
+└─ Policies/              # NilaiPolicy, AbsensiPolicy (scoping guru)
+
+resources/
+├─ css/app.css            # Tailwind v4 + design token + animasi landing
+├─ js/app.js              # Alpine.js (persist, intersect)
+└─ views/
+   ├─ landing/            # Partial landing page (navbar, hero, features, dst.)
+   ├─ layouts/            # app.blade.php + partials/sidebar
+   ├─ components/         # Komponen Blade reusable (x-button, x-card, x-table, x-form.*, …)
+   └─ <modul>/            # index / create / edit / show / _form tiap modul
+
+database/
+├─ factories/             # Factory data contoh
+├─ migrations/            # Skema tabel
+└─ seeders/               # DatabaseSeeder (data awal + kredensial)
+
+docs/
+└─ view-styleguide.md     # Panduan membangun view dengan komponen
+```
+
+---
+
+## 👥 Peran & Hak Akses
+
+| Modul | Admin | Guru |
+|-------|:-----:|:----:|
+| Dashboard | ✅ | ✅ (jadwal hari ini) |
+| Nilai & Absensi | ✅ | ✅ *(hanya kelas yang diampu/diwalikan)* |
+| Siswa, Kelas, Mapel, Jadwal | ✅ CRUD | 👁️ lihat saja |
+| Guru, Orang Tua, Pengumuman, Akun | ✅ CRUD | ⛔ 403 |
+| Profil & ganti password | ✅ | ✅ |
+
+Akses guru ke URL admin secara langsung akan ditolak (HTTP 403) oleh middleware `role`.
+
+---
+
+## 🛠️ Perintah yang Sering Dipakai
+
+```bash
+php artisan migrate:fresh --seed   # reset ulang database + data contoh
+php artisan route:list             # daftar semua rute
+php artisan view:clear             # bersihkan cache view Blade
+php artisan optimize:clear         # bersihkan seluruh cache
+npm run dev                        # aset dengan hot-reload
+npm run build                      # build aset produksi
+```
+
+---
+
+## 📝 Catatan
+
+- Modul WhatsApp/chatbot **belum** termasuk dalam rilis ini (tabel `chatbot_*` disiapkan untuk pengembangan lanjutan).
+- Foto siswa disimpan di `storage/app/public/siswa` dan diakses via symlink `public/storage` — pastikan `php artisan storage:link` sudah dijalankan.
+
+---
+
+Dibangun dengan ❤️ menggunakan Laravel, Tailwind CSS, dan Alpine.js.
