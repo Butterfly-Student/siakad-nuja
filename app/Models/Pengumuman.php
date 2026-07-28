@@ -20,6 +20,7 @@ class Pengumuman extends Model
         'judul',
         'konten',
         'target_role',
+        'kelas_id',
         'dibuat_oleh',
         'tanggal_publish',
         'is_active',
@@ -37,5 +38,10 @@ class Pengumuman extends Model
     public function pembuat(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function kelas(): BelongsTo
+    {
+        return $this->belongsTo(Kelas::class, 'kelas_id');
     }
 }

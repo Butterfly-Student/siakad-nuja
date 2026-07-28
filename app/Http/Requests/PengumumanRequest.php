@@ -23,6 +23,7 @@ class PengumumanRequest extends FormRequest
             'judul' => ['required', 'string', 'max:200'],
             'konten' => ['required', 'string'],
             'target_role' => ['nullable', Rule::in(['semua', 'admin', 'guru'])],
+            'kelas_id' => ['nullable', 'exists:kelas,id'],
             'tanggal_publish' => ['nullable', 'date'],
             'is_active' => ['nullable', 'boolean'],
         ];

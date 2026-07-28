@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\PengumumanRequest;
+use App\Models\Kelas;
 use App\Models\Pengumuman;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,7 @@ class PengumumanController extends Controller
 {
     public function index(): View
     {
-        $pengumuman = Pengumuman::with('pembuat')
+        $pengumuman = Pengumuman::with(['pembuat', 'kelas'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
@@ -22,7 +23,9 @@ class PengumumanController extends Controller
 
     public function create(): View
     {
-        return view('pengumuman.create');
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+
+        return view('pengumuman.create', compact('kelasList'));
     }
 
     public function store(PengumumanRequest $request): RedirectResponse
@@ -37,14 +40,16 @@ class PengumumanController extends Controller
 
     public function show(Pengumuman $pengumuman): View
     {
-        $pengumuman->load('pembuat');
+        $pengumuman->load(['pembuat', 'kelas']);
 
         return view('pengumuman.show', compact('pengumuman'));
     }
 
     public function edit(Pengumuman $pengumuman): View
     {
-        return view('pengumuman.edit', compact('pengumuman'));
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+
+        return view('pengumuman.edit', compact('pengumuman', 'kelasList'));
     }
 
     public function update(PengumumanRequest $request, Pengumuman $pengumuman): RedirectResponse

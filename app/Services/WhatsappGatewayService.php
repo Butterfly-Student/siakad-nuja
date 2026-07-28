@@ -11,21 +11,24 @@ use Illuminate\Support\Facades\Log;
 class WhatsappGatewayService
 {
     private string $baseUrl;
-    private string $session;
-    private string $apiKey;
+    private string $deviceId;
+    private string $username;
+    private string $password;
+    private string $phoneSuffix;
     private int $timeout;
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('whatsapp.url', 'http://localhost:3000'), '/');
-        $this->session = config('whatsapp.session', 'default');
-        $this->apiKey  = config('whatsapp.api_key', '');
-        $this->timeout = config('whatsapp.timeout', 30);
+        $this->baseUrl     = rtrim(config('whatsapp.url', 'http://localhost:3000'), '/');
+        $this->deviceId    = config('whatsapp.device_id', '');
+        $this->username    = config('whatsapp.username', '');
+        $this->password    = config('whatsapp.password', '');
+        $this->phoneSuffix = config('whatsapp.phone_suffix', '@s.whatsapp.net');
+        $this->timeout     = config('whatsapp.timeout', 30);
     }
 
     /**
      * Normalisasi nomor HP ke format internasional 628xxx (tanpa tanda +).
-     * WAHA membutuhkan format "628xxx@c.us" sebagai chatId.
      */
     public function normalisasiNomor(string $noHp): string
     {
@@ -42,34 +45,44 @@ class WhatsappGatewayService
     }
 
     /**
-     * Format nomor ke chatId WAHA (e.g., "628123456789@c.us")
+     * Format nomor ke JID Go-WA (e.g., "628123456789@s.whatsapp.net")
      */
-    private function toChatId(string $noHp): string
+    private function toJid(string $noHp): string
     {
-        return $this->normalisasiNomor($noHp) . '@c.us';
+        $normalized = $this->normalisasiNomor($noHp);
+
+        // Jika sudah mengandung @, kembalikan langsung
+        if (str_contains($normalized, '@')) {
+            return $normalized;
+        }
+
+        return $normalized . $this->phoneSuffix;
     }
 
     /**
-     * Kirim pesan teks via WAHA API.
+     * Kirim pesan teks via Go-WA API.
+     *
+     * Go-WA Endpoint: POST /send/message
+     * Body: { "phone": "628xxx@s.whatsapp.net", "message": "text" }
+     * Header: X-Device-Id (opsional)
      */
     public function send(string $noHp, string $pesan): bool
     {
         try {
-            $response = $this->makeRequest('POST', '/api/sendText', [
-                'session' => $this->session,
-                'chatId'  => $this->toChatId($noHp),
-                'text'    => $pesan,
+            $response = $this->makeRequest('POST', '/send/message', [
+                'phone'   => $this->toJid($noHp),
+                'message' => $pesan,
             ]);
 
             if ($response->successful()) {
-                Log::info("[WAHA] Berhasil kirim ke {$noHp}");
+                Log::info("[GOWA] Berhasil kirim ke {$noHp}");
                 return true;
             }
 
-            Log::error("[WAHA] Gagal kirim ke {$noHp}: HTTP " . $response->status() . ' — ' . $response->body());
+            Log::error("[GOWA] Gagal kirim ke {$noHp}: HTTP " . $response->status() . ' — ' . $response->body());
             return false;
         } catch (\Exception $e) {
-            Log::error("[WAHA] Exception kirim ke {$noHp}: " . $e->getMessage());
+            Log::error("[GOWA] Exception kirim ke {$noHp}: " . $e->getMessage());
             return false;
         }
     }
@@ -106,50 +119,131 @@ class WhatsappGatewayService
     }
 
     /**
-     * Cek status koneksi WAHA untuk sesi aktif.
-     * Return: 'CONNECTED' | 'DISCONNECTED' | 'SCAN_QR' | 'STARTING' | 'ERROR'
+     * Cek status koneksi Go-WA.
+     *
+     * Go-WA Endpoint: GET /app/status
+     * Response: { status: 200, code: "SUCCESS", results: { is_connected, is_logged_in, device_id, jid } }
+     *
+     * Return array dengan key: 'status', 'is_connected', 'is_logged_in', 'jid', 'device_id'
      */
     public function getStatus(): array
     {
         try {
-            $response = $this->makeRequest('GET', "/api/sessions/{$this->session}");
+            $response = $this->makeRequest('GET', '/app/status');
 
             if ($response->successful()) {
-                $data = $response->json();
+                $data    = $response->json();
+                $results = $data['results'] ?? [];
+
+                $isConnected = $results['is_connected'] ?? false;
+                $isLoggedIn  = $results['is_logged_in'] ?? false;
+
+                // Map ke status string untuk kompatibilitas view
+                $statusStr = match (true) {
+                    $isConnected && $isLoggedIn  => 'CONNECTED',
+                    $isConnected && !$isLoggedIn => 'SCAN_QR',
+                    default                      => 'DISCONNECTED',
+                };
+
                 return [
-                    'status'  => $data['status'] ?? 'UNKNOWN',
-                    'name'    => $data['me']['pushName'] ?? null,
-                    'phone'   => $data['me']['id'] ?? null,
-                    'session' => $this->session,
+                    'status'       => $statusStr,
+                    'is_connected' => $isConnected,
+                    'is_logged_in' => $isLoggedIn,
+                    'jid'          => $results['jid'] ?? null,
+                    'device_id'    => $results['device_id'] ?? $this->deviceId,
                 ];
             }
 
-            return ['status' => 'DISCONNECTED', 'session' => $this->session];
+            return ['status' => 'DISCONNECTED', 'device_id' => $this->deviceId];
         } catch (\Exception $e) {
-            Log::warning('[WAHA] Tidak bisa cek status: ' . $e->getMessage());
+            Log::warning('[GOWA] Tidak bisa cek status: ' . $e->getMessage());
             return ['status' => 'ERROR', 'message' => $e->getMessage()];
         }
     }
 
     /**
-     * Ambil screenshot QR code dari WAHA.
-     * Return base64 PNG string atau null jika tidak tersedia.
+     * Trigger QR code login via Go-WA.
+     *
+     * Go-WA Endpoint: GET /app/login
+     * Response: { status: 200, code: "SUCCESS", results: { qr_link: "/..." } }
+     *
+     * Return URL gambar QR atau null jika tidak tersedia.
      */
     public function getQrCode(): ?string
     {
         try {
-            $response = $this->makeRequest('GET', "/api/{$this->session}/auth/qr", [], [
-                'Accept' => 'image/png',
-            ]);
+            $response = $this->makeRequest('GET', '/app/login');
 
             if ($response->successful()) {
-                return base64_encode($response->body());
+                $data    = $response->json();
+                $qrLink  = $data['results']['qr_link'] ?? null;
+
+                if ($qrLink) {
+                    // qr_link biasanya path relatif, jadi gabungkan dengan base URL
+                    return $this->baseUrl . '/' . ltrim($qrLink, '/');
+                }
             }
 
             return null;
         } catch (\Exception $e) {
-            Log::warning('[WAHA] Tidak bisa ambil QR: ' . $e->getMessage());
+            Log::warning('[GOWA] Tidak bisa ambil QR: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Login via pairing code (alternatif selain QR).
+     *
+     * Go-WA Endpoint: GET /app/login-with-code?phone=628xxx
+     */
+    public function loginWithCode(string $phone): ?string
+    {
+        try {
+            $response = $this->makeRequest('GET', '/app/login-with-code', [], [
+                'phone' => $this->normalisasiNomor($phone),
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['results']['code'] ?? null;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::warning('[GOWA] Tidak bisa login with code: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Logout device dari WhatsApp.
+     *
+     * Go-WA Endpoint: GET /app/logout
+     */
+    public function logout(): bool
+    {
+        try {
+            $response = $this->makeRequest('GET', '/app/logout');
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error('[GOWA] Logout error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Reconnect device ke WhatsApp.
+     *
+     * Go-WA Endpoint: GET /app/reconnect
+     */
+    public function reconnect(): bool
+    {
+        try {
+            $response = $this->makeRequest('GET', '/app/reconnect');
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error('[GOWA] Reconnect error: ' . $e->getMessage());
+            return false;
         }
     }
 
@@ -170,24 +264,31 @@ class WhatsappGatewayService
     }
 
     /**
-     * Helper untuk HTTP request ke WAHA dengan API key opsional.
+     * Helper untuk HTTP request ke Go-WA dengan Basic Auth opsional.
+     *
+     * @param string $method   HTTP method (GET/POST)
+     * @param string $endpoint API endpoint path
+     * @param array  $body     Request body (untuk POST)
+     * @param array  $query    Query parameters (untuk GET)
      */
-    private function makeRequest(string $method, string $endpoint, array $body = [], array $headers = [])
+    private function makeRequest(string $method, string $endpoint, array $body = [], array $query = [])
     {
         $request = Http::timeout($this->timeout);
 
-        if ($this->apiKey) {
-            $request = $request->withHeaders(['X-Api-Key' => $this->apiKey]);
+        // Basic Auth (jika username & password diisi)
+        if ($this->username && $this->password) {
+            $request = $request->withBasicAuth($this->username, $this->password);
         }
 
-        if ($headers) {
-            $request = $request->withHeaders($headers);
+        // Device ID header (jika diisi)
+        if ($this->deviceId) {
+            $request = $request->withHeaders(['X-Device-Id' => $this->deviceId]);
         }
 
         $url = $this->baseUrl . $endpoint;
 
         return match (strtoupper($method)) {
-            'GET'  => $request->get($url),
+            'GET'  => $request->get($url, $query),
             'POST' => $request->post($url, $body),
             default => throw new \InvalidArgumentException("Method {$method} tidak didukung"),
         };

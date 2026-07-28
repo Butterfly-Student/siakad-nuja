@@ -39,8 +39,8 @@ class TagihanObserver
         $pesan = strtr($template, [
             '{nama_wali}'    => $wali->nama,
             '{nama_siswa}'   => $siswa->nama_lengkap,
-            '{nama_tagihan}' => $tagihan->nama_tagihan,
-            '{nominal}'      => number_format($tagihan->nominal, 0, ',', '.'),
+            '{nama_tagihan}' => $tagihan->judul ?? $tagihan->nama_tagihan ?? $tagihan->jenis ?? 'Tagihan',
+            '{nominal}'      => number_format((float) $tagihan->nominal, 0, ',', '.'),
         ]);
 
         SendWhatsappMessage::dispatch($wali->no_wa, $pesan, 'tagihan', $wali->id, $siswa->id);

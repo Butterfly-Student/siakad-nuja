@@ -27,6 +27,17 @@
     --color-brand-950: #1e1b4b;
 }
 
+/* Helper style untuk tombol warning/peringatan */
+.btn-warning {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    border: 1px solid #d97706 !important;
+}
+.btn-warning:hover {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
 /* Smooth scroll & base tweaks */
 html {
     scroll-behavior: smooth;

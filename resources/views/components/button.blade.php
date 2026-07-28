@@ -12,6 +12,7 @@
         'primary' => 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
         'secondary' => 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700',
         'danger' => 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
+        'warning' => 'btn-warning bg-amber-500 text-white hover:bg-amber-600 shadow-sm',
         'ghost' => 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700',
         'success' => 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm',
     ];

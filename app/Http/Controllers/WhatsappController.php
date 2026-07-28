@@ -21,35 +21,76 @@ class WhatsappController extends Controller
     public function index(): View
     {
         $status     = $this->gateway->getStatus();
-        $qrCode     = null;
+        $qrUrl      = null;
 
-        if (in_array($status['status'] ?? '', ['SCAN_QR', 'STARTING'])) {
-            $qrCode = $this->gateway->getQrCode();
+        // Jika belum login, siapkan QR URL
+        if (in_array($status['status'] ?? '', ['SCAN_QR', 'DISCONNECTED'])) {
+            $qrUrl = $this->gateway->getQrCode();
         }
 
         $totalNotif  = NotifikasiWhatsapp::count();
         $totalGagal  = NotifikasiWhatsapp::where('status', 'gagal')->count();
         $totalSesi   = \App\Models\ChatbotSession::count();
 
-        return view('whatsapp.index', compact('status', 'qrCode', 'totalNotif', 'totalGagal', 'totalSesi'));
+        return view('whatsapp.index', compact('status', 'qrUrl', 'totalNotif', 'totalGagal', 'totalSesi'));
     }
 
     /**
-     * AJAX endpoint — cek status koneksi WAHA (polling dari frontend)
+     * AJAX endpoint — cek status koneksi Go-WA (polling dari frontend)
      */
     public function statusAjax(): \Illuminate\Http\JsonResponse
     {
         $status = $this->gateway->getStatus();
-        $qrCode = null;
+        $qrUrl  = null;
 
-        if (in_array($status['status'] ?? '', ['SCAN_QR', 'STARTING'])) {
-            $qrCode = $this->gateway->getQrCode();
+        if (in_array($status['status'] ?? '', ['SCAN_QR', 'DISCONNECTED'])) {
+            $qrUrl = $this->gateway->getQrCode();
         }
 
         return response()->json([
             'status' => $status,
-            'qr'     => $qrCode ? "data:image/png;base64,{$qrCode}" : null,
+            'qr'     => $qrUrl,
         ]);
+    }
+
+    /**
+     * Trigger QR login via Go-WA
+     */
+    public function login(): \Illuminate\Http\RedirectResponse
+    {
+        $qrUrl = $this->gateway->getQrCode();
+
+        if ($qrUrl) {
+            return redirect()->route('whatsapp.index')->with('success', 'QR Code berhasil dimuat. Silakan scan.');
+        }
+
+        return redirect()->route('whatsapp.index')->with('error', 'Gagal memuat QR Code. Cek koneksi Go-WA.');
+    }
+
+    /**
+     * Logout device dari WhatsApp via Go-WA
+     */
+    public function logout(): \Illuminate\Http\RedirectResponse
+    {
+        $success = $this->gateway->logout();
+
+        return redirect()->route('whatsapp.index')->with(
+            $success ? 'success' : 'error',
+            $success ? 'Berhasil logout dari WhatsApp.' : 'Gagal logout. Cek koneksi Go-WA.'
+        );
+    }
+
+    /**
+     * Reconnect device ke WhatsApp via Go-WA
+     */
+    public function reconnect(): \Illuminate\Http\RedirectResponse
+    {
+        $success = $this->gateway->reconnect();
+
+        return redirect()->route('whatsapp.index')->with(
+            $success ? 'success' : 'error',
+            $success ? 'Berhasil reconnect ke WhatsApp.' : 'Gagal reconnect. Cek koneksi Go-WA.'
+        );
     }
 
     /**
@@ -122,7 +163,7 @@ class WhatsappController extends Controller
 
         return redirect()->back()->with(
             $success ? 'success' : 'error',
-            $success ? 'Pesan berhasil dikirim ulang.' : 'Gagal mengirim ulang. Cek koneksi WAHA.'
+            $success ? 'Pesan berhasil dikirim ulang.' : 'Gagal mengirim ulang. Cek koneksi Go-WA.'
         );
     }
 

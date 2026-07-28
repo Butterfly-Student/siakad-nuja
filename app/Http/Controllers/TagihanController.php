@@ -29,11 +29,21 @@ class TagihanController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            if ($request->status === 'tunggakan') {
+                $query->where('status', '!=', Tagihan::STATUS_LUNAS)
+                    ->whereNotNull('jatuh_tempo')
+                    ->where('jatuh_tempo', '<', now());
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         if ($request->filled('q')) {
-            $query->whereHas('siswa', fn ($q) => $q->where('nama_lengkap', 'like', "%{$request->q}%"));
+            $searchTerm = $request->q;
+            $query->where(function ($q) use ($searchTerm): void {
+                $q->whereHas('siswa', fn ($sq) => $sq->where('nama_lengkap', 'like', "%{$searchTerm}%"))
+                  ->orWhere('judul', 'like', "%{$searchTerm}%");
+            });
         }
 
         $tagihan = $query->paginate(20)->withQueryString();

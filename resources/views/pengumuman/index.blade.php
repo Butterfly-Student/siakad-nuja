@@ -24,7 +24,14 @@
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                         <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">{{ $p->judul }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
-                            <x-badge variant="brand">{{ $p->target_role ?? 'semua' }}</x-badge>
+                            <div class="flex flex-col gap-1 items-start">
+                                <x-badge variant="brand">{{ ucfirst($p->target_role ?? 'semua') }}</x-badge>
+                                @if ($p->kelas)
+                                    <x-badge variant="info">Khusus {{ $p->kelas->nama_kelas }}</x-badge>
+                                @else
+                                    <span class="text-xs text-slate-400">Semua Kelas</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ optional($p->tanggal_publish)->format('d M Y') ?? '-' }}</td>
                         <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ $p->pembuat->nama ?? '-' }}</td>

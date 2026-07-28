@@ -6,6 +6,20 @@
 @section('content')
 <div class="space-y-6 max-w-5xl">
 
+    {{-- Flash Messages --}}
+    @if(session('success'))
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+        <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        {{ session('error') }}
+    </div>
+    @endif
+
     {{-- Stats Row --}}
     <div class="grid grid-cols-3 gap-4">
         <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
@@ -44,7 +58,7 @@
                 <div class="h-9 w-9 rounded-xl bg-green-50 flex items-center justify-center">
                     <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                <h3 class="font-bold text-slate-800">Status Koneksi WAHA</h3>
+                <h3 class="font-bold text-slate-800">Status Koneksi Go-WA</h3>
             </div>
             <button id="btn-refresh" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -55,16 +69,15 @@
         <div class="p-6" id="status-container">
             @php
                 $statusColor = match($status['status'] ?? 'UNKNOWN') {
-                    'CONNECTED', 'WORKING' => 'emerald',
-                    'DISCONNECTED', 'FAILED', 'ERROR' => 'red',
-                    'SCAN_QR', 'STARTING' => 'amber',
+                    'CONNECTED' => 'emerald',
+                    'DISCONNECTED', 'ERROR' => 'red',
+                    'SCAN_QR' => 'amber',
                     default => 'slate',
                 };
                 $statusLabel = match($status['status'] ?? 'UNKNOWN') {
-                    'CONNECTED', 'WORKING' => 'Terhubung',
+                    'CONNECTED' => 'Terhubung',
                     'DISCONNECTED' => 'Terputus',
-                    'SCAN_QR' => 'Menunggu Scan QR',
-                    'STARTING' => 'Memulai...',
+                    'SCAN_QR' => 'Menunggu Login / Scan QR',
                     'ERROR' => 'Error',
                     default => $status['status'] ?? 'Tidak Diketahui',
                 };
@@ -72,23 +85,60 @@
 
             <div class="flex items-center gap-4 mb-4">
                 <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800">
-                    <span class="h-2 w-2 rounded-full bg-{{ $statusColor }}-500 {{ $status['status'] === 'CONNECTED' ? 'animate-pulse' : '' }}"></span>
+                    <span class="h-2 w-2 rounded-full bg-{{ $statusColor }}-500 {{ ($status['status'] ?? '') === 'CONNECTED' ? 'animate-pulse' : '' }}"></span>
                     {{ $statusLabel }}
                 </span>
-                @if(!empty($status['name']))
-                    <span class="text-sm text-slate-600">Akun: <strong>{{ $status['name'] }}</strong> ({{ $status['phone'] ?? '—' }})</span>
+                @if(!empty($status['jid']))
+                    @php
+                        $jidClean = preg_replace('/@.*$/', '', $status['jid']);
+                    @endphp
+                    <span class="text-sm text-slate-600">Akun: <strong>{{ $jidClean }}</strong></span>
+                @endif
+                @if(!empty($status['device_id']))
+                    <span class="text-xs text-slate-400">Device: {{ $status['device_id'] }}</span>
+                @endif
+            </div>
+
+            {{-- Action Buttons --}}
+            <div class="flex items-center gap-3 mb-4">
+                @if(($status['status'] ?? '') !== 'CONNECTED')
+                    <form action="{{ route('whatsapp.login') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                            Login (QR Code)
+                        </button>
+                    </form>
+                @endif
+
+                @if(($status['status'] ?? '') === 'CONNECTED')
+                    <form action="{{ route('whatsapp.reconnect') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Reconnect
+                        </button>
+                    </form>
+
+                    <form action="{{ route('whatsapp.logout') }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin logout? Device akan terputus dari WhatsApp.')">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            Logout
+                        </button>
+                    </form>
                 @endif
             </div>
 
             {{-- QR Code Section --}}
-            @if($qrCode)
+            @if($qrUrl)
             <div id="qr-section" class="bg-amber-50 border border-amber-200 rounded-xl p-5 mt-4">
                 <p class="text-amber-800 font-semibold mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.24M16.12 7.88l1.42-1.42M18.5 12H21m-9 6v-1m0 0h.01m-.01 0h-4m0-6h-.01m.01 4.24V16"/></svg>
                     Scan QR Code ini dengan WhatsApp Anda
                 </p>
                 <div class="flex gap-6 items-start">
-                    <img id="qr-image" src="data:image/png;base64,{{ $qrCode }}" alt="QR Code" class="w-48 h-48 border border-amber-300 rounded-lg bg-white p-2">
+                    <img id="qr-image" src="{{ $qrUrl }}" alt="QR Code" class="w-48 h-48 border border-amber-300 rounded-lg bg-white p-2">
                     <div class="text-sm text-amber-700 space-y-2">
                         <p><strong>Cara menghubungkan:</strong></p>
                         <ol class="list-decimal list-inside space-y-1">
@@ -152,13 +202,13 @@ async function refreshStatus() {
         const newStatus = data.status?.status;
 
         // Update badge (simple reload jika status berubah)
-        if (newStatus === 'CONNECTED' || newStatus === 'WORKING') {
+        if (newStatus === 'CONNECTED') {
             // Jika sudah connected, hentikan auto-refresh
             clearInterval(autoRefreshTimer);
             window.location.reload();
         }
 
-        // Update QR jika tersedia
+        // Update QR jika tersedia (Go-WA mengembalikan URL langsung)
         if (data.qr) {
             const qrImg = document.getElementById('qr-image');
             if (qrImg) qrImg.src = data.qr;
@@ -171,7 +221,7 @@ async function refreshStatus() {
 document.getElementById('btn-refresh')?.addEventListener('click', () => window.location.reload());
 
 // Auto-refresh hanya jika bukan CONNECTED
-@if(in_array($status['status'] ?? '', ['SCAN_QR', 'STARTING', 'DISCONNECTED']))
+@if(in_array($status['status'] ?? '', ['SCAN_QR', 'DISCONNECTED']))
 autoRefreshTimer = setInterval(refreshStatus, 30000);
 @endif
 </script>

@@ -5,33 +5,47 @@ declare(strict_types=1);
 return [
     /*
     |--------------------------------------------------------------------------
-    | WAHA (WhatsApp HTTP API) — Self-Hosted Gateway
+    | Go-WA (go-whatsapp-web-multidevice) — Self-Hosted Gateway
     |--------------------------------------------------------------------------
     |
-    | URL ke server WAHA yang sedang berjalan. Dalam development, ini biasanya
-    | http://localhost:3000 (via Docker). Di produksi, ganti ke IP/domain server.
+    | URL ke server Go-WA yang sedang berjalan di VPS.
+    | Default http://localhost:3000, ganti ke IP/domain server Go-WA Anda.
     |
     */
-    'url'     => env('WAHA_URL', 'http://localhost:3000'),
+    'url' => env('GOWA_URL', 'http://localhost:3000'),
 
     /*
-    | Nama sesi WAHA. Biarkan 'default' kecuali Anda menjalankan multi-sesi.
+    | Device ID untuk Go-WA. Digunakan sebagai header X-Device-Id.
+    | Biarkan kosong jika hanya ada satu device (single-device mode).
     */
-    'session' => env('WAHA_SESSION', 'default'),
+    'device_id' => env('GOWA_DEVICE_ID', ''),
 
     /*
-    | API Key untuk WAHA (hanya tersedia di WAHA Pro / versi Plus).
-    | Biarkan kosong jika menggunakan versi Core gratis.
+    | Basic Auth credentials untuk Go-WA (jika diaktifkan via flag -b).
+    | Biarkan kosong jika tidak menggunakan Basic Auth.
     */
-    'api_key' => env('WAHA_API_KEY', ''),
+    'username' => env('GOWA_USERNAME', ''),
+    'password' => env('GOWA_PASSWORD', ''),
+
+    /*
+    | Suffix JID WhatsApp. Go-WA menggunakan format @s.whatsapp.net
+    | untuk personal chat. Jangan ubah kecuali perlu.
+    */
+    'phone_suffix' => '@s.whatsapp.net',
 
     /*
     | HTTP timeout dalam detik untuk setiap request ke gateway.
     */
-    'timeout' => (int) env('WAHA_TIMEOUT', 30),
+    'timeout' => (int) env('GOWA_TIMEOUT', 30),
 
     /*
     | Timeout sesi chatbot dalam menit. Jika wali diam selama ini, sesi akan di-reset.
     */
-    'session_timeout_minutes' => (int) env('WAHA_SESSION_TIMEOUT', 30),
+    'session_timeout_minutes' => (int) env('GOWA_SESSION_TIMEOUT', 30),
+
+    /*
+    | Webhook secret untuk verifikasi HMAC signature (opsional).
+    | Set ini sama dengan --webhook-secret di Go-WA server.
+    */
+    'webhook_secret' => env('GOWA_WEBHOOK_SECRET', ''),
 ];

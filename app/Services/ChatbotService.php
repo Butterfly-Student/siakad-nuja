@@ -30,18 +30,22 @@ class ChatbotService
         $noHpDb = $this->toLokalFormat($noHpNormalized);
 
         // 2. Cari orang tua berdasarkan no_wa (bukan no_hp!)
-        $orangTuaRef = OrangTua::where('no_wa', $noHpDb)
-            ->orWhere('no_wa', $noHpNormalized)
-            ->orWhere('no_wa', $noHp)
-            ->whereNotNull('no_wa')
-            ->first();
+        $orangTuaRef = OrangTua::where(function ($q) use ($noHpDb, $noHpNormalized, $noHp): void {
+            $q->where('no_wa', $noHpDb)
+              ->orWhere('no_wa', $noHpNormalized)
+              ->orWhere('no_wa', $noHp);
+        })
+        ->whereNotNull('no_wa')
+        ->first();
 
         // Fallback: coba cari via no_hp biasa jika no_wa belum diisi
         if (!$orangTuaRef) {
-            $orangTuaRef = OrangTua::where('no_hp', $noHpDb)
-                ->orWhere('no_hp', $noHpNormalized)
-                ->where('is_kontak_utama', true)
-                ->first();
+            $orangTuaRef = OrangTua::where(function ($q) use ($noHpDb, $noHpNormalized, $noHp): void {
+                $q->where('no_hp', $noHpDb)
+                  ->orWhere('no_hp', $noHpNormalized)
+                  ->orWhere('no_hp', $noHp);
+            })
+            ->first();
         }
 
         if (!$orangTuaRef) {
@@ -52,56 +56,81 @@ class ChatbotService
             return;
         }
 
-        // 3. Ambil semua anak milik wali ini (berdasarkan no_wa yang sama)
-        $semua = OrangTua::where('no_wa', $orangTuaRef->no_wa)
-            ->whereNotNull('no_wa')
-            ->with('siswa')
-            ->get();
+        // 3. Ambil semua anak milik wali ini (berdasarkan no_wa / no_hp yang sama)
+        $semua = OrangTua::where(function ($q) use ($orangTuaRef): void {
+            if ($orangTuaRef->no_wa) {
+                $q->where('no_wa', $orangTuaRef->no_wa);
+            }
+            if ($orangTuaRef->no_hp) {
+                $q->orWhere('no_hp', $orangTuaRef->no_hp);
+            }
+        })
+        ->whereNotNull('siswa_id')
+        ->with('siswa')
+        ->get();
+
+        if ($semua->isEmpty()) {
+            $semua = collect([$orangTuaRef]);
+        }
+
+        $singleSiswaId = ($semua->count() === 1)
+            ? ($semua->first()?->siswa_id ?? $semua->first()?->siswa?->id)
+            : null;
 
         // 4. Ambil atau buat sesi chatbot
-        $noHpSession = $orangTuaRef->no_wa ?? $noHpDb;
+        $noHpSession = $orangTuaRef->no_wa ?? $orangTuaRef->no_hp ?? $noHpDb;
         $session = ChatbotSession::firstOrCreate(
             ['no_hp' => $noHpSession],
             [
-                'orang_tua_id' => $orangTuaRef->id,
-                'state'        => 'PILIH_ANAK',
-                'last_activity' => now(),
+                'orang_tua_id'     => $orangTuaRef->id,
+                'state'            => $semua->count() > 1 ? 'PILIH_ANAK' : 'MENU_UTAMA',
+                'anak_terpilih_id' => $singleSiswaId,
+                'last_activity'    => now(),
             ]
         );
 
-        // 5. Cek timeout
+        // 5. Cek timeout (30 menit) -> reset
         if (Carbon::parse($session->last_activity)->diffInMinutes(now()) > self::TIMEOUT_MINUTES) {
-            $session->state           = $semua->count() > 1 ? 'PILIH_ANAK' : 'MENU_UTAMA';
-            $session->anak_terpilih_id = $semua->count() === 1 ? $semua->first()?->siswa?->id : null;
-            $session->data_context    = null;
+            $session->state            = $semua->count() > 1 ? 'PILIH_ANAK' : 'MENU_UTAMA';
+            $session->anak_terpilih_id = $singleSiswaId;
+            $session->data_context     = null;
         }
 
-        // 6. Handle keyword global
+        // 6. Jika hanya 1 anak, otomatis pilih anak tersebut dan pastikan state MENU_UTAMA
+        if ($semua->count() === 1) {
+            $session->anak_terpilih_id = $singleSiswaId;
+            if ($session->state === 'PILIH_ANAK') {
+                $session->state = 'MENU_UTAMA';
+            }
+        }
+
+        // 7. Handle keyword global
         $pesanUpper = strtoupper(trim($pesanMasuk));
         if ($pesanUpper === 'MENU') {
-            $session->state = 'MENU_UTAMA';
+            $session->state = ($semua->count() > 1 && !$session->anak_terpilih_id) ? 'PILIH_ANAK' : 'MENU_UTAMA';
         } elseif (in_array($pesanUpper, ['GANTI ANAK', 'PILIH ANAK']) && $semua->count() > 1) {
             $session->state = 'PILIH_ANAK';
+            $session->anak_terpilih_id = null;
         }
 
-        // 7. Tentukan siswa aktif saat ini
+        // 8. Tentukan siswa aktif saat ini
         $siswaAktif = $session->anak_terpilih_id
             ? Siswa::find($session->anak_terpilih_id)
             : null;
 
-        // 8. Routing berdasarkan state
+        // 9. Routing berdasarkan state
         [$balasan, $newState, $newAnakId, $intent] = $this->routing(
             $session->state, $pesanMasuk, $orangTuaRef, $semua, $siswaAktif
         );
 
-        // 9. Update sesi
+        // 10. Update sesi
         $session->orang_tua_id      = $orangTuaRef->id;
         $session->state             = $newState;
         $session->anak_terpilih_id  = $newAnakId ?? $session->anak_terpilih_id;
         $session->last_activity     = now();
         $session->save();
 
-        // 10. Kirim & log
+        // 11. Kirim & log
         $this->balasDanLog($noHp, $pesanMasuk, $balasan, $orangTuaRef->id, $siswaAktif?->id ?? $newAnakId, $intent);
     }
 
@@ -302,7 +331,7 @@ class ChatbotService
         }
 
         $tagihan = Tagihan::where('siswa_id', $siswa->id)
-            ->where('status_lunas', false)
+            ->where('status', '!=', 'lunas')
             ->get();
 
         if ($tagihan->isEmpty()) {
@@ -312,8 +341,10 @@ class ChatbotService
         $text  = "💳 *Info Tagihan Ananda {$siswa->nama_lengkap}*\n\nTagihan yang belum lunas:\n";
         $total = 0;
         foreach ($tagihan as $t) {
-            $text  .= "• {$t->nama_tagihan}: *Rp " . number_format($t->nominal, 0, ',', '.') . "*\n";
-            $total += $t->nominal;
+            $namaTagihan = $t->judul ?? $t->nama_tagihan ?? $t->jenis ?? 'Tagihan';
+            $nominal = (float) $t->nominal;
+            $text  .= "• {$namaTagihan}: *Rp " . number_format($nominal, 0, ',', '.') . "*\n";
+            $total += $nominal;
         }
         $text .= "\n*Total: Rp " . number_format($total, 0, ',', '.') . "*";
         return $text;
@@ -329,8 +360,9 @@ class ChatbotService
 
         $text = "📢 *Agenda & Pengumuman Sekolah*\n\n";
         foreach ($pengumuman as $p) {
-            $tgl   = Carbon::parse($p->created_at)->translatedFormat('d M Y');
-            $isi   = mb_substr($p->isi, 0, 150) . (mb_strlen($p->isi) > 150 ? '...' : '');
+            $tgl   = Carbon::parse($p->tanggal_publish ?? $p->created_at)->translatedFormat('d M Y');
+            $isiRaw = (string) ($p->konten ?? $p->isi ?? '');
+            $isi   = mb_substr($isiRaw, 0, 150) . (mb_strlen($isiRaw) > 150 ? '...' : '');
             $text .= "🗓️ *{$p->judul}* ({$tgl})\n{$isi}\n\n";
         }
         return rtrim($text);
@@ -352,7 +384,7 @@ class ChatbotService
         if (str_starts_with($noHp, '0')) {
             $noHp = '62' . substr($noHp, 1);
         }
-        // Strip @c.us jika ada (dari format WAHA)
+        // Strip @s.whatsapp.net atau @c.us jika ada (dari format Go-WA / legacy)
         return preg_replace('/@.*$/', '', $noHp);
     }
 
