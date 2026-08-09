@@ -12,7 +12,6 @@
 </x-page-header>
 
 <x-card class="max-w-4xl">
-    <x-alert />
 
     <form action="{{ route('whatsapp.templates.single-update', $template['key']) }}" method="POST" class="space-y-6">
         @csrf

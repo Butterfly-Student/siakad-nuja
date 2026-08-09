@@ -1,5 +1,6 @@
 @props(['type' => 'success'])
 
+@if(!empty(trim((string)$slot)))
 @php
     $config = [
         'success' => ['classes' => 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800', 'icon' => 'check'],
@@ -18,3 +19,4 @@
         <x-icon name="close" class="h-4 w-4" />
     </button>
 </div>
+@endif

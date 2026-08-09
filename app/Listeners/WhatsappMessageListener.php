@@ -26,19 +26,36 @@ class WhatsappMessageListener
                     return;
                 }
 
-                $from = $event->from();
-                $body = $event->body();
+                $rawFrom = $event->from() ?? '';
+                $body    = $event->body() ?? '';
             } else {
-                $from = method_exists($event, 'from') ? $event->from() : ($event->from ?? null);
-                $body = method_exists($event, 'body') ? $event->body() : ($event->body ?? null);
+                $rawFrom = (string) (method_exists($event, 'from') ? $event->from() : ($event->from ?? ''));
+                $body    = (string) (method_exists($event, 'body') ? $event->body() : ($event->body ?? ''));
             }
 
-            if (! $from || ! $body) {
+            if (empty($rawFrom) || empty($body)) {
                 return;
             }
 
-            // Clean number from JID or non-digits
-            $noHp = preg_replace('/[^0-9]/', '', (string) $from);
+            // Filter out newsletters, status updates, broadcasts, and LID channels
+            if (
+                str_contains($rawFrom, '@newsletter') ||
+                str_contains($rawFrom, '@status') ||
+                str_contains($rawFrom, '@broadcast') ||
+                str_contains($rawFrom, '@lid')
+            ) {
+                Log::debug("[WhatsappMessageListener] Ignored non-personal JID: {$rawFrom}");
+                return;
+            }
+
+            // Clean number from JID or non-digits (e.g. "6287886833160@c.us" -> "6287886833160")
+            $noHp = preg_replace('/[^0-9]/', '', $rawFrom);
+
+            // Ignore if invalid phone number length (e.g. channel IDs with 18 digits or empty)
+            if (strlen($noHp) < 9 || strlen($noHp) > 15) {
+                Log::debug("[WhatsappMessageListener] Ignored invalid phone length ({$noHp}) from {$rawFrom}");
+                return;
+            }
 
             Log::info("[WhatsappMessageListener] Processing inbound message from {$noHp}: {$body}");
 

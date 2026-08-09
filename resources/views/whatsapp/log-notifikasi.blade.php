@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="space-y-4">
-    <x-alert />
 
     {{-- Filter --}}
     <div class="bg-white rounded-2xl border border-slate-200 p-5">
