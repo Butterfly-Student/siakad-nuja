@@ -54,21 +54,29 @@ class WhatsappController extends Controller
     }
 
     /**
-     * Trigger QR login via Go-WA
+     * Trigger QR login via laravel-whatsapp sidecar
      */
     public function login(): \Illuminate\Http\RedirectResponse
     {
-        $qrUrl = $this->gateway->getQrCode();
+        try {
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->start();
+            }
 
-        if ($qrUrl) {
-            return redirect()->route('whatsapp.index')->with('success', 'QR Code berhasil dimuat. Silakan scan.');
+            $qrUrl = $this->gateway->getQrCode();
+
+            if ($qrUrl) {
+                return redirect()->route('whatsapp.index')->with('success', 'Sesi WhatsApp berhasil dikirimkan. Silakan scan QR Code.');
+            }
+
+            return redirect()->route('whatsapp.index')->with('success', 'Sesi WhatsApp sedang menginisialisasi. QR Code akan dimuat otomatis.');
+        } catch (\Exception $e) {
+            return redirect()->route('whatsapp.index')->with('error', 'Gagal memuat QR Code. Pastikan service sidecar aktif (php artisan whatsapp:sidecar:start): ' . $e->getMessage());
         }
-
-        return redirect()->route('whatsapp.index')->with('error', 'Gagal memuat QR Code. Cek koneksi Go-WA.');
     }
 
     /**
-     * Logout device dari WhatsApp via Go-WA
+     * Logout device dari WhatsApp via laravel-whatsapp sidecar
      */
     public function logout(): \Illuminate\Http\RedirectResponse
     {
@@ -76,12 +84,12 @@ class WhatsappController extends Controller
 
         return redirect()->route('whatsapp.index')->with(
             $success ? 'success' : 'error',
-            $success ? 'Berhasil logout dari WhatsApp.' : 'Gagal logout. Cek koneksi Go-WA.'
+            $success ? 'Berhasil terputus dari sesi WhatsApp.' : 'Gagal logout. Pastikan service sidecar aktif.'
         );
     }
 
     /**
-     * Reconnect device ke WhatsApp via Go-WA
+     * Reconnect device ke WhatsApp via laravel-whatsapp sidecar
      */
     public function reconnect(): \Illuminate\Http\RedirectResponse
     {
@@ -89,7 +97,7 @@ class WhatsappController extends Controller
 
         return redirect()->route('whatsapp.index')->with(
             $success ? 'success' : 'error',
-            $success ? 'Berhasil reconnect ke WhatsApp.' : 'Gagal reconnect. Cek koneksi Go-WA.'
+            $success ? 'Sesi WhatsApp berhasil disambungkan ulang.' : 'Gagal reconnect. Pastikan service sidecar aktif.'
         );
     }
 

@@ -231,7 +231,7 @@ document.getElementById('btn-refresh')?.addEventListener('click', () => window.l
 
 // Auto-refresh hanya jika bukan CONNECTED
 @if(in_array($status['status'] ?? '', ['SCAN_QR', 'DISCONNECTED']))
-autoRefreshTimer = setInterval(refreshStatus, 30000);
+autoRefreshTimer = setInterval(refreshStatus, 5000);
 @endif
 </script>
 @endpush
