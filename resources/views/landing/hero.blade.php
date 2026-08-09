@@ -30,22 +30,22 @@
                         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75"></span>
                         <span class="relative inline-flex h-2 w-2 rounded-full bg-brand-400"></span>
                     </span>
-                    Sistem Informasi Akademik · PP. Nurul Jadid
+                    Sistem Informasi Akademik · Yayasan Nurul Jadid Karduluk
                 </div>
 
                 {{-- Headline --}}
                 <h1 class="text-5xl font-black leading-[1.0] tracking-tighter text-white sm:text-6xl xl:text-7xl">
-                    Sekolah<br>
+                    Pendidikan<br>
                     <span class="relative">
-                        <span class="lp-text-gradient">masa depan,</span>
+                        <span class="lp-text-gradient">Unggul & Islami,</span>
                     </span><br>
-                    <span class="text-slate-300 font-light italic">dimulai hari ini.</span>
+                    <span class="text-slate-300 font-light italic">Nurul Jadid Karduluk.</span>
                 </h1>
 
                 <p class="mx-auto mt-7 max-w-xl text-base leading-relaxed text-slate-400 lg:mx-0 sm:text-lg">
-                    SIAKAD NUJA bukan sekadar sistem — ini adalah ekosistem digital yang menyatukan
-                    <span class="text-slate-200 font-medium">siswa, guru, nilai, absensi, jadwal, dan keuangan</span>
-                    dalam satu dasbor yang hidup, responsif, dan elegan.
+                    SIAKAD NUJA adalah ekosistem digital terpadu <span class="text-white font-semibold">Yayasan Nurul Jadid Karduluk, Sumenep</span> yang menyatukan
+                    <span class="text-slate-200 font-medium">data siswa, nilai, absensi, jadwal, dan SPP</span>
+                    dalam satu platform modern dengan notifikasi WhatsApp otomatis bagi orang tua.
                 </p>
 
                 <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:items-start lg:justify-start justify-center">
@@ -65,9 +65,9 @@
                 {{-- Trust badges --}}
                 <div class="mt-10 flex flex-wrap items-center justify-center gap-6 lg:justify-start">
                     @foreach ([
-                        ['check', 'Real-time & Responsif'],
-                        ['moon', 'Dark Mode Premium'],
-                        ['users', 'Multi-Peran'],
+                        ['check', 'RA · MIS · MTs Nurul Jadid Karduluk'],
+                        ['moon', 'Notifikasi WhatsApp Wali'],
+                        ['users', 'Integrasi Sistem Terpusat'],
                     ] as [$ic, $txt])
                         <div class="flex items-center gap-2 text-sm text-slate-400">
                             <div class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
@@ -79,15 +79,36 @@
                 </div>
             </div>
 
-            {{-- Visual: Dashboard mockup 3D-ish --}}
+            {{-- Visual: Campus Building & Dashboard preview --}}
             <div class="relative lg:pl-4">
                 <div class="lp-float relative mx-auto max-w-lg">
 
+                    {{-- Card visual gedung pesantren --}}
+                    <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 p-3 shadow-2xl backdrop-blur-2xl ring-1 ring-white/5 mb-4">
+                        <div class="relative h-48 w-full overflow-hidden rounded-2xl border border-white/10">
+                            <img src="{{ asset('images/hero-building.png') }}" alt="Gedung Nurul Jadid Karduluk" class="h-full w-full object-cover transition-transform duration-700 hover:scale-105">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+                            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <img src="{{ asset('images/logo-nuja-karduluk.png') }}" alt="Logo YANUJA" class="h-9 w-9 object-contain filter drop-shadow-[0_2px_6px_rgba(0,140,227,0.5)]">
+                                    <div>
+                                        <div class="text-xs font-bold text-white leading-tight flex items-center gap-1">
+                                            <span>Yayasan Nurul Jadid Karduluk</span>
+                                            <span class="text-[9px] text-sky-400 font-extrabold">(YANUJA)</span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-300">Jl. K. Syafi'ie Itsbat No. 01, Sumenep</div>
+                                    </div>
+                                </div>
+                                <span class="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">Aktif</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Main dashboard card --}}
-                    <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl backdrop-blur-2xl ring-1 ring-white/5">
+                    <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 p-5 shadow-2xl backdrop-blur-2xl ring-1 ring-white/5">
 
                         {{-- Window controls --}}
-                        <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-2">
                                 <div class="flex gap-1.5">
                                     <div class="h-3 w-3 rounded-full bg-rose-500"></div>
@@ -105,34 +126,34 @@
                         <div class="grid grid-cols-2 gap-3 mb-4">
                             @php
                                 $mockStats = [
-                                    ['Siswa', '168', 'siswa', 'brand'],
-                                    ['Guru', '24', 'guru', 'emerald'],
-                                    ['Kelas', '8', 'kelas', 'amber'],
-                                    ['Tagihan Lunas', '94%', 'tagihan', 'sky'],
+                                    ['Siswa Aktif', '168+', 'siswa', 'brand'],
+                                    ['Tenaga Pengajar', '24', 'guru', 'emerald'],
+                                    ['Rombongan Belajar', '8', 'kelas', 'amber'],
+                                    ['SPP Terverifikasi', '94%', 'tagihan', 'sky'],
                                 ];
                                 $statBg = ['brand' => 'bg-brand-500/20 text-brand-300', 'emerald' => 'bg-emerald-500/20 text-emerald-300', 'amber' => 'bg-amber-500/20 text-amber-300', 'sky' => 'bg-sky-500/20 text-sky-300'];
                             @endphp
                             @foreach ($mockStats as [$label, $val, $ic, $col])
-                                <div class="rounded-2xl border border-white/5 bg-white/5 p-3.5 backdrop-blur">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <div class="flex h-7 w-7 items-center justify-center rounded-lg {{ $statBg[$col] }}">
+                                <div class="rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex h-6 w-6 items-center justify-center rounded-lg {{ $statBg[$col] }}">
                                             <x-icon name="{{ $ic }}" class="h-3.5 w-3.5" />
                                         </div>
                                     </div>
-                                    <div class="text-xl font-black text-white">{{ $val }}</div>
-                                    <div class="text-[11px] text-slate-400 mt-0.5">{{ $label }}</div>
+                                    <div class="text-lg font-black text-white">{{ $val }}</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">{{ $label }}</div>
                                 </div>
                             @endforeach
                         </div>
 
                         {{-- Chart bars --}}
-                        <div class="rounded-2xl border border-white/5 bg-white/5 p-4">
-                            <div class="flex items-center justify-between text-xs text-slate-400 mb-3">
-                                <span class="font-medium">Kehadiran Minggu Ini</span>
-                                <span class="font-bold text-emerald-400">92.4%</span>
+                        <div class="rounded-2xl border border-white/5 bg-white/5 p-3.5">
+                            <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                                <span class="font-medium">Kehadiran Santri/Siswa</span>
+                                <span class="font-bold text-emerald-400">95.8%</span>
                             </div>
-                            <div class="flex h-20 items-end gap-1.5">
-                                @foreach ([55, 78, 62, 91, 74, 100, 88] as $h)
+                            <div class="flex h-16 items-end gap-1.5">
+                                @foreach ([75, 88, 82, 95, 90, 100, 92] as $h)
                                     <div class="flex-1 rounded-t-sm bg-gradient-to-t from-brand-600 to-brand-400 opacity-90 transition-all" style="height: {{ $h }}%"></div>
                                 @endforeach
                             </div>
@@ -148,27 +169,27 @@
                     </div>
 
                     {{-- Floating notification chip --}}
-                    <div class="lp-float-slow absolute -left-8 top-12 hidden rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-xl sm:block" style="animation-delay:-2s">
+                    <div class="lp-float-slow absolute -left-8 top-32 hidden rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-xl sm:block" style="animation-delay:-2s">
                         <div class="flex items-center gap-2.5 text-xs font-medium text-white">
                             <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
                                 <x-icon name="check" class="h-4 w-4" />
                             </span>
                             <div>
-                                <div class="font-semibold">Nilai Tersimpan</div>
-                                <div class="text-slate-400 text-[10px]">Matematika · Kelas 9A</div>
+                                <div class="font-semibold">Nilai Tersimpan & WA Sent</div>
+                                <div class="text-slate-400 text-[10px]">RA, MIS & MTs Nurul Jadid Karduluk</div>
                             </div>
                         </div>
                     </div>
 
                     {{-- Floating payment chip --}}
-                    <div class="lp-float-slow absolute -right-6 bottom-10 hidden rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-xl sm:block" style="animation-delay:-4s">
+                    <div class="lp-float-slow absolute -right-6 bottom-6 hidden rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-xl sm:block" style="animation-delay:-4s">
                         <div class="flex items-center gap-2.5 text-xs font-medium text-white">
                             <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                                 <x-icon name="tagihan" class="h-4 w-4" />
                             </span>
                             <div>
                                 <div class="font-semibold">SPP Terverifikasi</div>
-                                <div class="text-slate-400 text-[10px]">Ahmad Rizki · Juli 2026</div>
+                                <div class="text-slate-400 text-[10px]">Karduluk · Pragaan</div>
                             </div>
                         </div>
                     </div>
@@ -187,7 +208,7 @@
 
 </section>
 
-{{-- About section (portfolio flavor) --}}
+{{-- About section --}}
 <section id="tentang" class="relative overflow-hidden py-24 sm:py-32">
     <div class="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 -z-10"></div>
     <div class="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -196,21 +217,21 @@
             {{-- Kiri: Teks --}}
             <div class="lp-reveal">
                 <span class="inline-block rounded-full bg-brand-500/15 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-400 mb-5">
-                    Tentang Sistem
+                    Tentang Yayasan
                 </span>
                 <h2 class="text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
-                    Bukan sekedar<br>
-                    <span class="lp-text-gradient italic">administrasi biasa.</span>
+                    Membangun Generasi<br>
+                    <span class="lp-text-gradient italic">Berakhlak & Berprestasi.</span>
                 </h2>
                 <p class="mt-6 text-lg leading-relaxed text-slate-400">
-                    SIAKAD NUJA lahir dari kebutuhan nyata: mengelola ratusan siswa, puluhan guru, dan ribuan data akademik tanpa kerumitan yang tidak perlu. Kami membangun pengalaman yang terasa seperti alat profesional, bukan portal pemerintah tahun 2010.
+                    Yayasan Nurul Jadid Karduluk mendidik santri dan siswa dengan memadukan kurikulum madrasah terpadu, tahfidz Al-Qur'an, kajian kitab kuning, serta pemanfaatan teknologi informasi SIAKAD modern.
                 </p>
                 <div class="mt-8 grid grid-cols-2 gap-4">
                     @foreach ([
-                        ['🎓', 'Akademik Komprehensif', 'Nilai, absensi, jadwal, laporan dalam satu atap.'],
-                        ['💳', 'Keuangan Transparan', 'Tagihan SPP dan verifikasi pembayaran real-time.'],
-                        ['🔔', 'Notifikasi WhatsApp', 'Orang tua langsung tahu perkembangan anak.'],
-                        ['📊', 'Data Analitik', 'Dasbor cerdas yang memberi insight, bukan sekadar angka.'],
+                        ['🎓', 'Lembaga Pendidikan', 'RA, MIS & MTs Nurul Jadid Karduluk.'],
+                        ['📖', 'Tahfidz & Kitab', 'Pembinaan karakter santri berasrama berlandaskan Ahlussunnah.'],
+                        ['🔔', 'Integrasi WhatsApp', 'Orang tua mendapatkan laporan absensi & nilai secara gratis.'],
+                        ['📊', 'Transparansi SPP', 'Pencatatan tagihan dan bukti pembayaran online yang real-time.'],
                     ] as [$emoji, $title, $desc])
                         <div class="rounded-2xl border border-white/5 bg-white/3 p-4 backdrop-blur">
                             <div class="text-2xl mb-2">{{ $emoji }}</div>
@@ -225,9 +246,9 @@
             <div class="lp-reveal relative" style="--lp-delay:150ms">
                 <div class="space-y-4">
                     @foreach ([
-                        ['PP. Nurul Jadid Al-Paiton', 'Probolinggo, Jawa Timur', 'Lembaga pesantren modern berdedikasi tinggi.', '🏫'],
-                        ['168+ Siswa Aktif', '24 Tenaga Pengajar', 'Dari berbagai jenjang dan rombongan belajar.', '👨‍🎓'],
-                        ['Teknologi Modern', 'Laravel · Tailwind · Alpine.js', 'Stack terdepan untuk pengalaman terbaik.', '⚡'],
+                        ['Yayasan Nurul Jadid Karduluk', 'Karduluk, Pragaan, Sumenep', 'Jl. K. Syafi\'ie Itsbat No. 01, Kab. Sumenep, Madura.', '🏫'],
+                        ['Lembaga Pendidikan Terdaftar', 'RA · MIS · MTs Nurul Jadid Karduluk', 'RA (NPSN: 69749559), MIS (NPSN: 60720605) & MTs Karduluk.', '👨‍🎓'],
+                        ['SIAKAD WA Integration', 'Laravel · Alpine.js · WhatsApp API', 'Platform akademik digital terdepan untuk wali murid.', '⚡'],
                     ] as [$t1, $t2, $desc, $emoji])
                         <div class="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/3 p-5 backdrop-blur">
                             <div class="text-3xl shrink-0">{{ $emoji }}</div>

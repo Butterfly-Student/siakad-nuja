@@ -19,7 +19,7 @@ class NilaiController extends Controller
         $user = request()->user();
 
         $nilai = Nilai::with(['siswa', 'mapel', 'kelas'])
-            ->when($user->isGuru(), function ($query) use ($user): void {
+            ->when($user?->isGuru(), function ($query) use ($user): void {
                 // Guru hanya melihat nilai kelas/mapel yang ia ampu atau ia walikan.
                 $guru = $user->guru;
                 $kelasMapel = $guru?->jadwal()->get(['kelas_id', 'mapel_id']) ?? collect();
@@ -38,6 +38,12 @@ class NilaiController extends Controller
                 });
             })
             ->when(request('kelas_id'), fn ($query, $id) => $query->where('kelas_id', $id))
+            ->when(request('search'), function ($query, $search): void {
+                $query->whereHas('siswa', function ($q) use ($search): void {
+                    $q->where('nama_lengkap', 'like', "%{$search}%")
+                      ->orWhere('nis', 'like', "%{$search}%");
+                });
+            })
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();

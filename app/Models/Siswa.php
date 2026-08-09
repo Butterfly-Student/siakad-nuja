@@ -53,4 +53,18 @@ class Siswa extends Model
     {
         return $this->hasMany(Absensi::class, 'siswa_id');
     }
+
+    /**
+     * Dapatkan kontak utama wali murid untuk pengiriman notifikasi WA.
+     * Mengutamakan yang di-flag is_kontak_utama = true, jika tidak ada mengambil kontak pertama yang punya no_wa/no_hp.
+     */
+    public function getKontakUtamaWali(): ?OrangTua
+    {
+        return OrangTua::where('siswa_id', $this->id)
+            ->where(function ($q): void {
+                $q->whereNotNull('no_wa')->orWhereNotNull('no_hp');
+            })
+            ->orderByDesc('is_kontak_utama')
+            ->first();
+    }
 }

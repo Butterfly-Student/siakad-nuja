@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE `notifikasi_whatsapp` MODIFY COLUMN `jenis` VARCHAR(50) NOT NULL DEFAULT 'umum'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `notifikasi_whatsapp` MODIFY COLUMN `jenis` VARCHAR(50) NOT NULL DEFAULT 'umum'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE `notifikasi_whatsapp` MODIFY COLUMN `jenis` ENUM('absensi','nilai','pengumuman','tagihan','kuitansi','umum') NOT NULL DEFAULT 'umum'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `notifikasi_whatsapp` MODIFY COLUMN `jenis` ENUM('absensi','nilai','pengumuman','tagihan','kuitansi','umum') NOT NULL DEFAULT 'umum'");
+        }
     }
 };

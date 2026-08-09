@@ -15,6 +15,8 @@
 
     <x-form.input label="No. HP" name="no_hp" :value="$orangTua->no_hp ?? ''" />
 
+    <x-form.input label="No. WhatsApp" name="no_wa" :value="$orangTua->no_wa ?? ''" placeholder="08..." hint="Nomor utama pengiriman notifikasi WA" />
+
     <x-form.input label="Pekerjaan" name="pekerjaan" :value="$orangTua->pekerjaan ?? ''" />
 
     <div class="sm:col-span-2">

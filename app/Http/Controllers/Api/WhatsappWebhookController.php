@@ -19,64 +19,82 @@ class WhatsappWebhookController extends Controller
      */
     public function handle(Request $request): JsonResponse
     {
-        Log::info('[GOWA Webhook] Payload: ' . json_encode($request->all()));
+        $rawContent = $request->getContent();
+        Log::info('[GOWA Webhook] Payload Received: ' . $rawContent);
 
         // ── 1. Verifikasi HMAC Signature (opsional) ─────────────────────────
         $secret = config('whatsapp.webhook_secret', '');
         if ($secret) {
             $signature = $request->header('x-webhook-signature', '');
-            $expected  = hash_hmac('sha256', $request->getContent(), $secret);
+            $expected  = hash_hmac('sha256', $rawContent, $secret);
 
-            if (!hash_equals($expected, $signature)) {
+            if (! hash_equals($expected, $signature)) {
                 Log::warning('[GOWA Webhook] Signature mismatch — ditolak.');
                 return response()->json(['error' => 'Invalid signature'], 403);
             }
         }
 
-        // ── 2. Normalisasi: Dukung format Go-WA dan format generik ──────────
+        // ── 2. Normalisasi Payload (Dukung Go-WA, Baileys, & Generik) ────────
         $event    = $request->input('event');
         $deviceId = $request->input('device_id');
-        $payload  = $request->input('payload');
+        $payload  = $request->input('payload') ?? $request->input('data');
 
-        // Jika format Go-WA (nested payload)
-        if ($event && $payload) {
-            // Abaikan bukan event "message"
-            if ($event !== 'message') {
+        $sender  = null;
+        $message = null;
+
+        if ($payload && is_array($payload)) {
+            // Abaikan jika event dispesifikasikan dan bukan "message"
+            if ($event && $event !== 'message') {
                 return response()->json(['status' => 'ignored', 'reason' => "event={$event}"]);
             }
 
             // Deteksi pesan dari diri sendiri (fromMe)
-            $fromMe = $payload['is_from_me'] ?? false;
+            $fromMe = $payload['is_from_me'] ?? $payload['fromMe'] ?? $payload['key']['fromMe'] ?? false;
             if ($fromMe) {
                 return response()->json(['status' => 'ignored', 'reason' => 'fromMe=true']);
             }
 
-            $sender = $payload['from'] ?? null;
+            $sender = $payload['from'] ?? $payload['sender'] ?? $payload['key']['remoteJid'] ?? null;
             if ($sender && $deviceId && $sender === $deviceId) {
                 return response()->json(['status' => 'ignored', 'reason' => 'fromMe=true']);
             }
 
             // Abaikan pesan dari Grup (@g.us)
-            $chatId = $payload['chat_id'] ?? '';
+            $chatId = (string) ($payload['chat_id'] ?? $payload['from'] ?? $payload['key']['remoteJid'] ?? '');
             if (str_ends_with($chatId, '@g.us')) {
                 return response()->json(['status' => 'ignored', 'reason' => 'group_chat']);
             }
 
-            // Ekstrak isi pesan (Go-WA bisa di payload.body atau payload.message.conversation)
+            // Ekstrak pesan
             $messageObj = $payload['message'] ?? [];
-            $message    = $payload['body']
-                ?? $messageObj['conversation']
-                ?? $messageObj['extendedTextMessage']['text']
-                ?? null;
+            if (is_string($messageObj)) {
+                $message = $messageObj;
+            } else {
+                $message = $payload['body']
+                    ?? $payload['text']
+                    ?? $messageObj['conversation']
+                    ?? $messageObj['extendedTextMessage']['text']
+                    ?? $messageObj['imageMessage']['caption']
+                    ?? null;
+            }
         } else {
-            // Format generik (fallback untuk testing atau gateway lain)
-            $sender  = $request->input('sender');
-            $message = $request->input('message');
+            // Format generik / flat (fallback)
+            $sender  = $request->input('sender') ?? $request->input('from') ?? $request->input('key.remoteJid');
+            $messageInput = $request->input('message');
+            if (is_string($messageInput)) {
+                $message = $messageInput;
+            } else {
+                $message = $request->input('body')
+                    ?? $request->input('text')
+                    ?? $request->input('message.conversation')
+                    ?? $request->input('message.extendedTextMessage.text');
+            }
         }
 
         // ── 3. Validasi ────────────────────────────────────────────────────
-        if (!$sender || !$message) {
-            return response()->json(['error' => 'Missing sender or message'], 400);
+        if (! $sender || ! $message) {
+            Log::warning('[GOWA Webhook] Missing sender/message: sender=' . json_encode($sender) . ' message=' . json_encode($message));
+            return response()->json(['error' => 'Missing sender or message', 'received' => $request->all()], 400);
         }
 
         // Strip format JID dari nomor Go-WA (@s.whatsapp.net)
@@ -86,11 +104,11 @@ class WhatsappWebhookController extends Controller
         try {
             $this->chatbot->process($noHp, (string) $message);
             return response()->json(['status' => 'success']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('[GOWA Webhook] Chatbot error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'Internal Server Error'], 500);
+            return response()->json(['error' => 'Internal Server Error', 'message' => $e->getMessage()], 500);
         }
     }
 }

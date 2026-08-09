@@ -31,6 +31,7 @@ class UserRequest extends FormRequest
             'password' => [$isUpdate ? 'nullable' : 'required', 'string', 'min:8'],
             'no_hp' => ['nullable', 'string', 'max:20'],
             'is_active' => ['nullable', 'boolean'],
+            'kirim_wa' => ['nullable', 'boolean'],
 
             // Field guru (hanya relevan saat role = guru)
             'nip' => ['nullable', 'required_if:role,guru', 'string', 'max:30', Rule::unique('guru', 'nip')->ignore($user?->guru?->id)],
@@ -42,6 +43,7 @@ class UserRequest extends FormRequest
     {
         $this->merge([
             'is_active' => $this->boolean('is_active'),
+            'kirim_wa'  => $this->boolean('kirim_wa'),
         ]);
     }
 

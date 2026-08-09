@@ -23,13 +23,18 @@
     @if ($orangTua->count())
         {{-- Desktop --}}
         <div class="hidden md:block">
-            <x-table :headers="['Nama', 'Hubungan', 'Siswa', 'No. HP', 'Kontak Utama', 'Aksi']">
+            <x-table :headers="['Nama', 'Hubungan', 'Siswa', 'No. HP / WA', 'Kontak Utama', 'Aksi']">
                 @foreach ($orangTua as $ot)
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                         <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">{{ $ot->nama }}</td>
                         <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ $ot->hubungan ?? '-' }}</td>
                         <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ $ot->siswa->nama_lengkap ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ $ot->no_hp ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            <div>HP: {{ $ot->no_hp ?? '-' }}</div>
+                            @if ($ot->no_wa)
+                                <div class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">WA: {{ $ot->no_wa }}</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @if ($ot->is_kontak_utama)
                                 <x-badge variant="brand">Utama</x-badge>
@@ -69,7 +74,7 @@
                     </div>
                     <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                         <div><dt class="text-xs text-slate-400">Siswa</dt><dd class="text-slate-700 dark:text-slate-300">{{ $ot->siswa->nama_lengkap ?? '-' }}</dd></div>
-                        <div><dt class="text-xs text-slate-400">No. HP</dt><dd class="text-slate-700 dark:text-slate-300">{{ $ot->no_hp ?? '-' }}</dd></div>
+                        <div><dt class="text-xs text-slate-400">No. HP / WA</dt><dd class="text-slate-700 dark:text-slate-300">{{ $ot->no_wa ?? $ot->no_hp ?? '-' }}</dd></div>
                         <div>
                             <dt class="text-xs text-slate-400">Kontak Utama</dt>
                             <dd>@if ($ot->is_kontak_utama) <x-badge variant="brand">Utama</x-badge> @else <span class="text-slate-400">-</span> @endif</dd>

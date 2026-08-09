@@ -17,256 +17,377 @@ use App\Models\Siswa;
 use App\Models\Tagihan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    private const TAHUN_AJARAN = '2024/2025';
+    private const TAHUN_AJARAN = '2026/2027';
 
     public function run(): void
     {
+        // Matikan event dispatcher agar seeder berjalan tanpa trigger job WhatsApp di background
+        Event::fake();
+
+        $jsonPath = database_path('seeders/data/seeder_dataset.json');
+        if (! file_exists($jsonPath)) {
+            $this->command->error("File dataset tidak ditemukan: {$jsonPath}");
+            return;
+        }
+
+        $dataset = json_decode(file_get_contents($jsonPath), true);
+
         $admin = $this->seedAdmin();
-        $guruList = $this->seedGuru();
-        $mapelList = $this->seedMataPelajaran();
-        $kelasList = $this->seedKelas($guruList);
-        $siswaList = $this->seedSiswa($kelasList);
+        $guruMap = $this->seedGuru($dataset['teachers'] ?? []);
+        $mapelMap = $this->seedMataPelajaran($dataset['mi_mapels'] ?? [], $dataset['mts_mapels'] ?? []);
+        $kelasMap = $this->seedKelas($guruMap);
+        $siswaList = $this->seedSiswa($dataset['mi_students'] ?? [], $dataset['mts_students'] ?? [], $kelasMap);
         $this->seedOrangTua($siswaList);
-        $jadwalList = $this->seedJadwal($kelasList, $mapelList, $guruList);
-        $this->seedNilai($siswaList, $mapelList);
+        
+        $jadwalList = $this->seedJadwal(
+            $dataset['mi_schedules'] ?? [],
+            $dataset['mts_schedules'] ?? [],
+            $kelasMap,
+            $mapelMap,
+            $guruMap
+        );
+
+        $this->seedNilai($siswaList, $mapelMap);
         $this->seedAbsensi($jadwalList, $siswaList);
         $this->seedPengumuman($admin);
         $this->seedTagihan($siswaList, $admin);
 
-        $this->command->info('Seeding selesai. Login admin: admin@siakadnuja.sch.id / password');
+        $this->call(ChatbotRuleSeeder::class);
+
+        $this->command->info('Seeding data real MI & MTs selesai. Login admin: admin@siakadnuja.sch.id / password');
     }
 
     private function seedAdmin(): User
     {
-        return User::create([
-            'nama' => 'Administrator',
-            'email' => 'admin@siakadnuja.sch.id',
-            'password' => Hash::make('password'),
-            'role' => User::ROLE_ADMIN,
-            'no_hp' => '081200000001',
-            'is_active' => true,
-        ]);
-    }
-
-    /**
-     * @return array<int, Guru>
-     */
-    private function seedGuru(): array
-    {
-        $namaGuru = [
-            'Ahmad Fauzi, S.Pd.', 'Siti Aminah, S.Pd.', 'Muhammad Rizki, S.Pd.',
-            'Dewi Lestari, S.Pd.', 'Bambang Sutrisno, S.Pd.', 'Nur Halimah, S.Ag.',
-            'Joko Prasetyo, S.Pd.', 'Rina Marlina, S.Pd.', 'Hendra Gunawan, S.Kom.',
-            'Fatimah Zahra, S.Pd.',
-        ];
-
-        $jabatan = ['Guru Mata Pelajaran', 'Guru & Wali Kelas', 'Guru Senior', 'Kepala Lab'];
-        $guruList = [];
-
-        foreach ($namaGuru as $i => $nama) {
-            $urut = $i + 1;
-            $user = User::create([
-                'nama' => $nama,
-                'email' => 'guru' . $urut . '@siakadnuja.sch.id',
+        return User::firstOrCreate(
+            ['email' => 'admin@siakadnuja.sch.id'],
+            [
+                'nama' => 'Administrator',
                 'password' => Hash::make('password'),
-                'role' => User::ROLE_GURU,
-                'no_hp' => '08130000' . str_pad((string) $urut, 4, '0', STR_PAD_LEFT),
+                'role' => User::ROLE_ADMIN,
+                'no_hp' => '081200000001',
                 'is_active' => true,
-            ]);
-
-            $guruList[] = Guru::create([
-                'user_id' => $user->id,
-                'nip' => '1985' . str_pad((string) ($urut * 7), 8, '0', STR_PAD_LEFT),
-                'nama_lengkap' => $nama,
-                'jabatan' => $jabatan[$i % count($jabatan)],
-                'no_hp' => $user->no_hp,
-            ]);
-        }
-
-        return $guruList;
+            ]
+        );
     }
 
     /**
-     * @return array<int, MataPelajaran>
+     * @param  array<int, string>  $teacherNames
+     * @return array<string, Guru>  [nama_guru => Guru]
      */
-    private function seedMataPelajaran(): array
+    private function seedGuru(array $teacherNames): array
     {
-        $mapel = [
-            ['MTK', 'Matematika', 75],
-            ['BIN', 'Bahasa Indonesia', 75],
-            ['BIG', 'Bahasa Inggris', 72],
-            ['IPA', 'Ilmu Pengetahuan Alam', 73],
-            ['IPS', 'Ilmu Pengetahuan Sosial', 73],
-            ['PKN', 'Pendidikan Kewarganegaraan', 75],
-            ['PAI', 'Pendidikan Agama Islam', 75],
-            ['PJK', 'Pendidikan Jasmani & Kesehatan', 78],
-            ['SBD', 'Seni Budaya', 76],
-            ['TIK', 'Teknologi Informasi & Komunikasi', 75],
-        ];
+        $guruMap = [];
+        $jabatanList = ['Guru Mata Pelajaran', 'Guru & Wali Kelas', 'Guru Senior', 'Staf Pengajar'];
 
-        $list = [];
-        foreach ($mapel as [$kode, $nama, $kkm]) {
-            $list[] = MataPelajaran::create([
-                'kode_mapel' => $kode,
-                'nama_mapel' => $nama,
-                'jenjang' => 'SMP',
-                'kkm' => $kkm,
-                'deskripsi' => 'Mata pelajaran ' . $nama . ' untuk jenjang SMP.',
-            ]);
+        foreach ($teacherNames as $i => $nama) {
+            $urut = $i + 1;
+            $email = 'guru' . $urut . '@siakadnuja.sch.id';
+
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'nama' => $nama,
+                    'password' => Hash::make('password'),
+                    'role' => User::ROLE_GURU,
+                    'no_hp' => '0813' . str_pad((string) $urut, 8, '0', STR_PAD_LEFT),
+                    'is_active' => true,
+                ]
+            );
+
+            $guru = Guru::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nip' => '1985' . str_pad((string) ($urut * 13), 8, '0', STR_PAD_LEFT),
+                    'nama_lengkap' => $nama,
+                    'jabatan' => $jabatanList[$i % count($jabatanList)],
+                    'no_hp' => $user->no_hp,
+                ]
+            );
+
+            $guruMap[$nama] = $guru;
         }
 
-        return $list;
+        return $guruMap;
     }
 
     /**
-     * @param  array<int, Guru>  $guruList
-     * @return array<int, Kelas>
+     * @param  array<int, string>  $miMapels
+     * @param  array<int, string>  $mtsMapels
+     * @return array<string, MataPelajaran>  ["MI_MATEMATIKA" => MataPelajaran]
      */
-    private function seedKelas(array $guruList): array
+    private function seedMataPelajaran(array $miMapels, array $mtsMapels): array
     {
-        $kelasNama = [
-            ['7A', '7'], ['7B', '7'],
-            ['8A', '8'], ['8B', '8'],
-            ['9A', '9'], ['9B', '9'],
-        ];
+        $mapelMap = [];
 
-        $list = [];
-        foreach ($kelasNama as $i => [$nama, $tingkat]) {
-            $list[] = Kelas::create([
-                'nama_kelas' => $nama,
-                'tingkat' => $tingkat,
-                'jenjang' => 'SMP',
-                'tahun_ajaran' => self::TAHUN_AJARAN,
-                'wali_kelas_id' => $guruList[$i]->id, // 6 kelas ↔ 6 guru pertama sebagai wali
-                'kapasitas' => 32,
-            ]);
+        // Seed MI Mapels
+        foreach ($miMapels as $i => $nama) {
+            $slug = Str::slug($nama);
+            $kode = strtoupper(substr(str_replace('-', '', $slug), 0, 4)) . '-MI';
+            if (MataPelajaran::where('kode_mapel', $kode)->exists()) {
+                $kode = strtoupper(substr(str_replace('-', '', $slug), 0, 3)) . ($i + 1) . '-MI';
+            }
+
+            $m = MataPelajaran::firstOrCreate(
+                ['nama_mapel' => $nama, 'jenjang' => 'MI'],
+                [
+                    'kode_mapel' => $kode,
+                    'kkm' => 75,
+                    'deskripsi' => 'Mata pelajaran ' . $nama . ' jenjang MI.',
+                ]
+            );
+            $mapelMap["MI_{$nama}"] = $m;
         }
 
-        return $list;
+        // Seed MTs Mapels
+        foreach ($mtsMapels as $i => $nama) {
+            $slug = Str::slug($nama);
+            $kode = strtoupper(substr(str_replace('-', '', $slug), 0, 4)) . '-MTS';
+            if (MataPelajaran::where('kode_mapel', $kode)->exists()) {
+                $kode = strtoupper(substr(str_replace('-', '', $slug), 0, 3)) . ($i + 1) . '-MTS';
+            }
+
+            $m = MataPelajaran::firstOrCreate(
+                ['nama_mapel' => $nama, 'jenjang' => 'MTs'],
+                [
+                    'kode_mapel' => $kode,
+                    'kkm' => 75,
+                    'deskripsi' => 'Mata pelajaran ' . $nama . ' jenjang MTs.',
+                ]
+            );
+            $mapelMap["MTs_{$nama}"] = $m;
+        }
+
+        return $mapelMap;
     }
 
     /**
-     * @param  array<int, Kelas>  $kelasList
-     * @return array<int, Siswa>
+     * @param  array<string, Guru>  $guruMap
+     * @return array<string, Kelas>  ["MI_1" => Kelas, "MTs_7" => Kelas]
      */
-    private function seedSiswa(array $kelasList): array
+    private function seedKelas(array $guruMap): array
+    {
+        $kelasMap = [];
+        $guruList = array_values($guruMap);
+
+        // MI: 1..6
+        for ($k = 1; $k <= 6; $k++) {
+            $namaKelas = (string) $k;
+            $wali = $guruList[($k - 1) % count($guruList)] ?? null;
+
+            $kelas = Kelas::firstOrCreate(
+                ['nama_kelas' => $namaKelas, 'jenjang' => 'MI', 'tahun_ajaran' => self::TAHUN_AJARAN],
+                [
+                    'tingkat' => (string) $k,
+                    'wali_kelas_id' => $wali?->id,
+                    'kapasitas' => 32,
+                ]
+            );
+            $kelasMap["MI_{$namaKelas}"] = $kelas;
+        }
+
+        // MTs: 7..9
+        for ($k = 7; $k <= 9; $k++) {
+            $namaKelas = (string) $k;
+            $wali = $guruList[($k + 5) % count($guruList)] ?? null;
+
+            $kelas = Kelas::firstOrCreate(
+                ['nama_kelas' => $namaKelas, 'jenjang' => 'MTs', 'tahun_ajaran' => self::TAHUN_AJARAN],
+                [
+                    'tingkat' => (string) $k,
+                    'wali_kelas_id' => $wali?->id,
+                    'kapasitas' => 32,
+                ]
+            );
+            $kelasMap["MTs_{$namaKelas}"] = $kelas;
+        }
+
+        return $kelasMap;
+    }
+
+    /**
+     * @param  array<int, array>  $miStudents
+     * @param  array<int, array>  $mtsStudents
+     * @param  array<string, Kelas>  $kelasMap
+     * @return array<int, array{siswa: Siswa, data: array}>
+     */
+    private function seedSiswa(array $miStudents, array $mtsStudents, array $kelasMap): array
     {
         $all = [];
-        foreach ($kelasList as $kelas) {
-            $siswaKelas = Siswa::factory()->count(28)->create(['kelas_id' => $kelas->id]);
-            foreach ($siswaKelas as $s) {
-                $all[] = $s;
-            }
+
+        // MI Students
+        foreach ($miStudents as $sData) {
+            $kelasKey = "MI_{$sData['kelas']}";
+            $kelas = $kelasMap[$kelasKey] ?? null;
+            if (! $kelas) continue;
+
+            $siswa = Siswa::firstOrCreate(
+                ['nis' => $sData['nis']],
+                [
+                    'nama_lengkap' => $sData['nama'],
+                    'kelas_id' => $kelas->id,
+                    'tanggal_lahir' => $sData['tanggal_lahir'] ?: null,
+                    'jenis_kelamin' => $sData['jk'],
+                    'alamat' => $sData['alamat'],
+                    'status' => 'Aktif',
+                    'tahun_masuk' => 2025,
+                ]
+            );
+
+            $all[] = ['siswa' => $siswa, 'data' => $sData];
+        }
+
+        // MTs Students
+        foreach ($mtsStudents as $sData) {
+            $kelasKey = "MTs_{$sData['kelas']}";
+            $kelas = $kelasMap[$kelasKey] ?? null;
+            if (! $kelas) continue;
+
+            $siswa = Siswa::firstOrCreate(
+                ['nis' => $sData['nis']],
+                [
+                    'nama_lengkap' => $sData['nama'],
+                    'kelas_id' => $kelas->id,
+                    'tanggal_lahir' => $sData['tanggal_lahir'] ?: null,
+                    'jenis_kelamin' => $sData['jk'],
+                    'alamat' => $sData['alamat'],
+                    'status' => 'Aktif',
+                    'tahun_masuk' => 2024,
+                ]
+            );
+
+            $all[] = ['siswa' => $siswa, 'data' => $sData];
         }
 
         return $all;
     }
 
     /**
-     * @param  array<int, Siswa>  $siswaList
+     * @param  array<int, array{siswa: Siswa, data: array}>  $siswaList
      */
     private function seedOrangTua(array $siswaList): void
     {
-        foreach ($siswaList as $siswa) {
-            OrangTua::factory()->create([
+        foreach ($siswaList as $item) {
+            $siswa = $item['siswa'];
+            $data = $item['data'];
+
+            if ($siswa->orangTua()->exists()) {
+                continue;
+            }
+
+            $namaAyah = ! empty($data['nama_ayah']) ? $data['nama_ayah'] : 'Ayah ' . $siswa->nama_lengkap;
+            $namaIbu = ! empty($data['nama_ibu']) ? $data['nama_ibu'] : 'Ibu ' . $siswa->nama_lengkap;
+
+            // Nomor HP & WA selalu acak/random (tidak memakai nomor dari berkas Excel)
+            $noHpAyah = '08' . fake()->numerify('##########');
+            $noHpIbu  = '08' . fake()->numerify('##########');
+
+            OrangTua::create([
                 'siswa_id' => $siswa->id,
+                'nama' => $namaAyah,
                 'hubungan' => 'Ayah',
+                'no_hp' => $noHpAyah,
+                'no_wa' => $noHpAyah,
+                'alamat' => $siswa->alamat,
+                'pekerjaan' => 'Wiraswasta',
                 'is_kontak_utama' => true,
             ]);
-            OrangTua::factory()->create([
+
+            OrangTua::create([
                 'siswa_id' => $siswa->id,
+                'nama' => $namaIbu,
                 'hubungan' => 'Ibu',
+                'no_hp' => $noHpIbu,
+                'no_wa' => $noHpIbu,
+                'alamat' => $siswa->alamat,
+                'pekerjaan' => 'Ibu Rumah Tangga',
                 'is_kontak_utama' => false,
             ]);
         }
     }
 
     /**
-     * Jadwal koheren: tiap kelas 5 hari x 6 jam, tanpa bentrok guru pada slot yang sama.
-     *
-     * @param  array<int, Kelas>  $kelasList
-     * @param  array<int, MataPelajaran>  $mapelList
-     * @param  array<int, Guru>  $guruList
+     * @param  array<int, array>  $miSchedules
+     * @param  array<int, array>  $mtsSchedules
+     * @param  array<string, Kelas>  $kelasMap
+     * @param  array<string, MataPelajaran>  $mapelMap
+     * @param  array<string, Guru>  $guruMap
      * @return array<int, JadwalPelajaran>
      */
-    private function seedJadwal(array $kelasList, array $mapelList, array $guruList): array
-    {
-        $hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-        $slot = [
-            1 => ['07:00', '07:40'],
-            2 => ['07:40', '08:20'],
-            3 => ['08:20', '09:00'],
-            4 => ['09:15', '09:55'],
-            5 => ['09:55', '10:35'],
-            6 => ['10:35', '11:15'],
-        ];
-
-        // Tiap mapel diampu satu guru tetap.
-        $mapelGuru = [];
-        foreach ($mapelList as $i => $mapel) {
-            $mapelGuru[$mapel->id] = $guruList[$i % count($guruList)];
-        }
-
+    private function seedJadwal(
+        array $miSchedules,
+        array $mtsSchedules,
+        array $kelasMap,
+        array $mapelMap,
+        array $guruMap
+    ): array {
         $jadwalList = [];
-        $guruSlot = []; // [hari][jam_ke][guru_id] => true
+        $combined = array_merge($miSchedules, $mtsSchedules);
 
-        foreach ($kelasList as $kelas) {
-            $mapelIndex = 0;
-            foreach ($hariList as $hari) {
-                foreach ($slot as $jamKe => [$mulai, $selesai]) {
-                    $mapel = $mapelList[$mapelIndex % count($mapelList)];
-                    $guru = $mapelGuru[$mapel->id];
+        foreach ($combined as $item) {
+            $jenjang = $item['jenjang'];
+            $kelasKey = "{$jenjang}_{$item['kelas']}";
+            $mapelKey = "{$jenjang}_{$item['mapel']}";
 
-                    $tries = 0;
-                    while (isset($guruSlot[$hari][$jamKe][$guru->id]) && $tries < count($mapelList)) {
-                        $mapelIndex++;
-                        $mapel = $mapelList[$mapelIndex % count($mapelList)];
-                        $guru = $mapelGuru[$mapel->id];
-                        $tries++;
-                    }
+            $kelas = $kelasMap[$kelasKey] ?? null;
+            $mapel = $mapelMap[$mapelKey] ?? null;
+            $guru = $guruMap[$item['guru']] ?? null;
 
-                    $guruSlot[$hari][$jamKe][$guru->id] = true;
-
-                    $jadwalList[] = JadwalPelajaran::create([
-                        'kelas_id' => $kelas->id,
-                        'mapel_id' => $mapel->id,
-                        'guru_id' => $guru->id,
-                        'hari' => $hari,
-                        'jam_ke' => $jamKe,
-                        'jam_mulai' => $mulai,
-                        'jam_selesai' => $selesai,
-                        'ruangan' => 'R-' . $kelas->nama_kelas,
-                        'tahun_ajaran' => self::TAHUN_AJARAN,
-                    ]);
-
-                    $mapelIndex++;
-                }
+            if (! $kelas || ! $mapel) {
+                continue;
             }
+
+            if (! $guru) {
+                $guru = $kelas->waliKelas ?: (reset($guruMap) ?: null);
+            }
+
+            if (! $guru) {
+                continue;
+            }
+
+            $jadwal = JadwalPelajaran::create([
+                'kelas_id' => $kelas->id,
+                'mapel_id' => $mapel->id,
+                'guru_id' => $guru->id,
+                'hari' => ucfirst(strtolower($item['hari'])),
+                'jam_ke' => (int) $item['jam_ke'],
+                'jam_mulai' => $item['jam_mulai'],
+                'jam_selesai' => $item['jam_selesai'],
+                'ruangan' => 'R-' . $kelas->nama_kelas . '-' . $jenjang,
+                'tahun_ajaran' => self::TAHUN_AJARAN,
+            ]);
+
+            $jadwalList[] = $jadwal;
         }
 
         return $jadwalList;
     }
 
     /**
-     * Nilai per siswa untuk 6 mapel inti; nilai_akhir & predikat terhitung.
-     *
-     * @param  array<int, Siswa>  $siswaList
-     * @param  array<int, MataPelajaran>  $mapelList
+     * @param  array<int, array{siswa: Siswa, data: array}>  $siswaList
+     * @param  array<string, MataPelajaran>  $mapelMap
      */
-    private function seedNilai(array $siswaList, array $mapelList): void
+    private function seedNilai(array $siswaList, array $mapelMap): void
     {
-        $mapelInti = array_slice($mapelList, 0, 6);
         $rows = [];
 
-        foreach ($siswaList as $siswa) {
-            foreach ($mapelInti as $mapel) {
-                $harian = fake()->numberBetween(65, 95);
-                $uts = fake()->numberBetween(60, 95);
-                $uas = fake()->numberBetween(60, 98);
+        foreach ($siswaList as $item) {
+            $siswa = $item['siswa'];
+            $jenjang = $item['data']['jenjang'];
+
+            $mapelForJenjang = array_filter($mapelMap, fn($k) => str_starts_with($k, "{$jenjang}_"), ARRAY_FILTER_USE_KEY);
+            $selectedMapels = array_slice(array_values($mapelForJenjang), 0, 5);
+
+            foreach ($selectedMapels as $mapel) {
+                $harian = fake()->numberBetween(70, 95);
+                $uts = fake()->numberBetween(65, 95);
+                $uas = fake()->numberBetween(65, 98);
                 $akhir = Nilai::hitungNilaiAkhir($harian, $uts, $uas);
 
                 $rows[] = [
@@ -292,10 +413,8 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Absensi 5 hari kerja terakhir untuk jam pertama tiap kelas.
-     *
      * @param  array<int, JadwalPelajaran>  $jadwalList
-     * @param  array<int, Siswa>  $siswaList
+     * @param  array<int, array{siswa: Siswa, data: array}>  $siswaList
      */
     private function seedAbsensi(array $jadwalList, array $siswaList): void
     {
@@ -307,7 +426,8 @@ class DatabaseSeeder extends Seeder
         }
 
         $siswaPerKelas = [];
-        foreach ($siswaList as $siswa) {
+        foreach ($siswaList as $item) {
+            $siswa = $item['siswa'];
             $siswaPerKelas[$siswa->kelas_id][] = $siswa;
         }
 
@@ -342,8 +462,8 @@ class DatabaseSeeder extends Seeder
     {
         $data = [
             ['Penerimaan Rapor Semester Ganjil', 'Pembagian rapor semester ganjil akan dilaksanakan pada hari Sabtu. Mohon kehadiran orang tua/wali murid.', 'semua'],
-            ['Rapat Koordinasi Guru', 'Seluruh guru diharapkan hadir dalam rapat koordinasi persiapan ujian akhir semester di ruang guru.', 'guru'],
-            ['Libur Semester', 'Libur semester ganjil dimulai setelah pembagian rapor. Kegiatan belajar dimulai kembali sesuai kalender akademik.', 'semua'],
+            ['Rapat Koordinasi Guru MI & MTs', 'Seluruh guru MI dan MTs diharapkan hadir dalam rapat koordinasi persiapan ujian akhir semester di ruang guru.', 'guru'],
+            ['Libur Semester Akademik 2026/2027', 'Libur semester ganjil dimulai setelah pembagian rapor. Kegiatan belajar dimulai kembali sesuai kalender akademik.', 'semua'],
         ];
 
         foreach ($data as $i => [$judul, $konten, $target]) {
@@ -359,31 +479,23 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Tagihan SPP bulanan untuk setiap siswa, dengan sebagian sudah dibayar.
-     *
-     * Skenario per siswa (3 bulan terakhir):
-     *  - Bulan terlama : LUNAS (ada pembayaran disetujui)
-     *  - Bulan tengah  : acak — MENUNGGU (ada pembayaran pending) atau LUNAS
-     *  - Bulan terbaru : acak — BELUM_DIBAYAR atau MENUNGGU
-     *
-     * @param  array<int, Siswa>  $siswaList
+     * @param  array<int, array{siswa: Siswa, data: array}>  $siswaList
      */
     private function seedTagihan(array $siswaList, User $admin): void
     {
         $bulanList = [
-            ['Mei 2025',  '2025-05-31', 3],
-            ['Juni 2025', '2025-06-30', 2],
-            ['Juli 2025', '2025-07-31', 1],
+            ['Mei 2026',  '2026-05-31', 3],
+            ['Juni 2026', '2026-06-30', 2],
+            ['Juli 2026', '2026-07-31', 1],
         ];
         $nominal = 200_000;
 
-        foreach ($siswaList as $siswa) {
+        foreach ($siswaList as $item) {
+            $siswa = $item['siswa'];
             foreach ($bulanList as [$periode, $jatuhTempo, $bulanLalu]) {
-                $isLast   = $bulanLalu === 1;
                 $isMid    = $bulanLalu === 2;
                 $isOldest = $bulanLalu === 3;
 
-                // Tentukan status tagihan
                 if ($isOldest) {
                     $status = Tagihan::STATUS_LUNAS;
                 } elseif ($isMid) {
@@ -403,7 +515,6 @@ class DatabaseSeeder extends Seeder
                     'keterangan'  => null,
                 ]);
 
-                // Buat record pembayaran sesuai status
                 if ($status === Tagihan::STATUS_LUNAS) {
                     Pembayaran::create([
                         'tagihan_id'        => $tagihan->id,
@@ -411,10 +522,7 @@ class DatabaseSeeder extends Seeder
                         'metode'            => 'Transfer',
                         'bank'              => fake()->randomElement(['BCA', 'BRI', 'BNI', 'Mandiri', 'BSI']),
                         'nama_pengirim'     => $siswa->nama_lengkap,
-                        'tanggal_bayar'     => fake()->dateTimeBetween(
-                            now()->subMonths($bulanLalu)->startOfMonth()->format('Y-m-d'),
-                            now()->subMonths($bulanLalu)->endOfMonth()->format('Y-m-d')
-                        )->format('Y-m-d'),
+                        'tanggal_bayar'     => now()->subMonths($bulanLalu)->startOfMonth()->format('Y-m-d'),
                         'bukti'             => null,
                         'status'            => Pembayaran::STATUS_DISETUJUI,
                         'catatan'           => 'Pembayaran telah dikonfirmasi.',
@@ -434,7 +542,6 @@ class DatabaseSeeder extends Seeder
                         'catatan'       => null,
                     ]);
                 }
-                // STATUS_BELUM: tidak ada record pembayaran
             }
         }
     }

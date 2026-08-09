@@ -46,6 +46,10 @@
             <dd class="mt-1 text-sm text-slate-900 dark:text-white">{{ $orangTua->no_hp ?? '-' }}</dd>
         </div>
         <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">No. WhatsApp</dt>
+            <dd class="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">{{ $orangTua->no_wa ?? '-' }}</dd>
+        </div>
+        <div>
             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Pekerjaan</dt>
             <dd class="mt-1 text-sm text-slate-900 dark:text-white">{{ $orangTua->pekerjaan ?? '-' }}</dd>
         </div>

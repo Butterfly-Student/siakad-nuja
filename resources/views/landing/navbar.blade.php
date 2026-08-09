@@ -7,13 +7,15 @@
 
         {{-- Logo --}}
         <a href="#beranda" class="group flex items-center gap-3 select-none">
-            <div class="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-600/40 transition group-hover:scale-105 group-hover:shadow-brand-600/60">
-                <x-icon name="mapel" class="h-5 w-5 text-white" />
-                <div class="absolute inset-0 rounded-2xl ring-1 ring-white/20"></div>
+            <div class="relative flex h-12 w-12 items-center justify-center transition group-hover:scale-105">
+                <img src="{{ asset('images/logo-nuja-karduluk.png') }}" alt="Logo Yayasan Nurul Jadid Karduluk YANUJA" class="h-full w-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,140,227,0.45)]">
             </div>
             <div class="leading-tight">
-                <div class="text-sm font-black tracking-tight text-white">SIAKAD NUJA</div>
-                <div class="text-[10px] font-medium uppercase tracking-[0.25em] text-slate-400">Nurul Jadid · Karduluk</div>
+                <div class="text-sm font-black tracking-tight text-white flex items-center gap-1.5">
+                    <span>SIAKAD NUJA</span>
+                    <span class="rounded-md bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-bold text-sky-300 border border-sky-500/30">YANUJA</span>
+                </div>
+                <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">Nurul Jadid · Karduluk Sumenep</div>
             </div>
         </a>
 

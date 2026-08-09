@@ -11,11 +11,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="SIAKAD NUJA — Sistem Informasi Akademik modern PP. Nurul Jadid Al-Paiton. Kelola nilai, absensi, tagihan SPP, jadwal, dan notifikasi WhatsApp dalam satu platform elegan.">
-    <meta name="keywords" content="SIAKAD, Nurul Jadid, sistem akademik pesantren, manajemen sekolah, absensi online, nilai siswa">
-    <meta property="og:title" content="SIAKAD NUJA — Sistem Informasi Akademik Modern">
-    <meta property="og:description" content="Platform akademik digital terbaik untuk PP. Nurul Jadid Al-Paiton.">
-    <title>SIAKAD NUJA — Sistem Informasi Akademik · PP. Nurul Jadid</title>
+    <meta name="description" content="SIAKAD NUJA — Sistem Informasi Akademik modern Yayasan Nurul Jadid Karduluk Pragaan Sumenep. Kelola nilai, absensi, tagihan SPP, jadwal, dan notifikasi WhatsApp dalam satu platform elegan.">
+    <meta name="keywords" content="SIAKAD, Nurul Jadid Karduluk, Sumenep, Pragaan, sistem akademik pesantren, manajemen sekolah, absensi online, nilai siswa, MIS Nurul Jadid, MTs As-Syafi'ie">
+    <meta property="og:title" content="SIAKAD NUJA — Sistem Informasi Akademik Nurul Jadid Karduluk">
+    <meta property="og:description" content="Platform akademik digital terpadu untuk Yayasan & Lembaga Pendidikan Nurul Jadid Karduluk, Sumenep.">
+    <title>SIAKAD NUJA — Sistem Informasi Akademik · Nurul Jadid Karduluk Sumenep</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 overflow-x-hidden">
@@ -25,14 +25,14 @@
     <main>
         @include('landing.hero')
         @include('landing.marquee')
-        @include('landing.features')
-        @include('landing.roles')
         @include('landing.gallery')
-        @include('landing.stats')
         @include('landing.cta')
     </main>
 
     @include('landing.footer')
+
+    {{-- Floating WhatsApp Chatbot Widget --}}
+    @include('landing.whatsapp_widget')
 
     {{-- Back to top --}}
     <button x-show="scrolled" @click="window.scrollTo({top:0,behavior:'smooth'})"

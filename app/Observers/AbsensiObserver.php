@@ -29,13 +29,10 @@ class AbsensiObserver
             return;
         }
 
-        // Ambil hanya kontak utama yang punya nomor WA
-        $wali = OrangTua::where('siswa_id', $siswa->id)
-            ->where('is_kontak_utama', true)
-            ->whereNotNull('no_wa')
-            ->first();
+        // Ambil kontak utama wali murid
+        $wali = $siswa->getKontakUtamaWali();
 
-        if (!$wali) {
+        if (!$wali || !$wali->no_wa) {
             Log::info("[Notif WA] Absensi siswa ID {$siswa->id}: tidak ada wali dengan no_wa.");
             return;
         }

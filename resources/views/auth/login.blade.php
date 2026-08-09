@@ -6,11 +6,13 @@
 <div class="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 px-4 py-12">
     <div class="w-full max-w-md">
         <div class="mb-8 flex flex-col items-center text-center">
-            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/30">
-                <x-icon name="mapel" class="h-7 w-7" />
-            </div>
-            <h1 class="mt-4 text-2xl font-bold text-slate-900 dark:text-white">SIAKAD NUJA</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sistem Informasi Akademik Nurul Jadid</p>
+            <a href="{{ route('landing') }}" class="group flex flex-col items-center transition focus:outline-none" title="Kembali ke Beranda / Landing Page">
+                <div class="relative flex h-16 w-16 items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                    <img src="{{ asset('images/logo-nuja-karduluk.png') }}" alt="Logo Yayasan Nurul Jadid Karduluk" class="h-full w-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,140,227,0.45)]">
+                </div>
+                <h1 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white transition-colors group-hover:text-brand-600 dark:group-hover:text-brand-400">SIAKAD NUJA</h1>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sistem Informasi Akademik Nurul Jadid</p>
+            </a>
         </div>
 
         <div class="rounded-2xl bg-white dark:bg-slate-800 p-6 sm:p-8 shadow-sm ring-1 ring-slate-200/70 dark:ring-slate-700/70">

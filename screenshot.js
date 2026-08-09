@@ -44,23 +44,28 @@ async function takeScreenshots() {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
 
+    // 0. Screenshot Landing Page
+    console.log('📸 Capturing: 00_landing.png');
+    await page.goto(`${BASE_URL}/`, { waitUntil: 'networkidle2' });
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, '00_landing.png'), fullPage: false });
+
     // 1. Screenshot Login Page (sebelum login)
     console.log('📸 Capturing: 01_login.png');
     await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_login.png'), fullPage: true });
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_login.png'), fullPage: false });
 
     // 2. Perform Login as Admin
-    console.log('🔑 Logging in as Admin...');
+    console.log('🔑 Logging in as Admin (admin@siakadnuja.sch.id)...');
     await page.type('input[name="email"]', 'admin@siakadnuja.sch.id');
     await page.type('input[name="password"]', 'password');
     await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: 'networkidle2' })
     ]);
-    console.log('✅ Logged in successfully!');
+    console.log('✅ Logged in as Admin successfully!');
 
-    // Daftar Halaman yang akan di-screenshot
-    const pagesToCapture = [
+    // Daftar Halaman Admin
+    const adminPagesToCapture = [
         { name: '02_dashboard.png', path: '/dashboard' },
         
         // Siswa
@@ -117,8 +122,8 @@ async function takeScreenshots() {
 
         // Laporan
         { name: '27_laporan_index.png', path: '/laporan' },
-        { name: '28_laporan_kehadiran.png', path: '/laporan/kehadiran' },
-        { name: '29_laporan_nilai.png', path: '/laporan/nilai' },
+        { name: '28_laporan_kehadiran.png', path: '/laporan/kehadiran?kelas_id=1&bulan=2026-08' },
+        { name: '29_laporan_nilai.png', path: '/laporan/nilai?kelas_id=1&mapel_id=1' },
 
         // Pengumuman
         { name: '30_pengumuman_index.png', path: '/pengumuman' },
@@ -138,10 +143,10 @@ async function takeScreenshots() {
         { name: '40_users_create.png', path: '/users/create' },
     ];
 
-    for (const p of pagesToCapture) {
+    for (const p of adminPagesToCapture) {
         try {
             const url = `${BASE_URL}${p.path}`;
-            console.log(`📸 Capturing: ${p.name} (${p.path})`);
+            console.log(`📸 Capturing Admin: ${p.name} (${p.path})`);
             await page.goto(url, { waitUntil: 'networkidle2' });
 
             if (p.action) {
@@ -149,7 +154,47 @@ async function takeScreenshots() {
             }
 
             const targetPath = path.join(SCREENSHOT_DIR, p.name);
-            await page.screenshot({ path: targetPath, fullPage: true });
+            await page.screenshot({ path: targetPath, fullPage: false });
+        } catch (err) {
+            console.warn(`⚠️ Skipped/Warning for ${p.name}: ${err.message}`);
+        }
+    }
+
+    // 3. Logout & Perform Login as Guru (guru2@siakadnuja.sch.id - ABD. KAFI, S.Pd.I)
+    console.log('🔑 Logging out Admin and logging in as Guru (guru2@siakadnuja.sch.id)...');
+    const cookies = await page.cookies();
+    await page.deleteCookie(...cookies);
+
+    await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
+    await page.type('input[name="email"]', 'guru2@siakadnuja.sch.id');
+    await page.type('input[name="password"]', 'password');
+    await Promise.all([
+        page.click('button[type="submit"]'),
+        page.waitForNavigation({ waitUntil: 'networkidle2' })
+    ]);
+    console.log('✅ Logged in as Guru successfully!');
+
+    // Daftar Halaman Guru
+    const guruPagesToCapture = [
+        { name: '41_guru_dashboard.png', path: '/dashboard' },
+        { name: '42_guru_jadwal_index.png', path: '/jadwal' },
+        { name: '43_guru_nilai_index.png', path: '/nilai' },
+        { name: '44_guru_absensi_index.png', path: '/absensi' },
+        { name: '45_guru_laporan_index.png', path: '/laporan' },
+    ];
+
+    for (const p of guruPagesToCapture) {
+        try {
+            const url = `${BASE_URL}${p.path}`;
+            console.log(`📸 Capturing Guru: ${p.name} (${p.path})`);
+            await page.goto(url, { waitUntil: 'networkidle2' });
+
+            if (p.action) {
+                await p.action(page);
+            }
+
+            const targetPath = path.join(SCREENSHOT_DIR, p.name);
+            await page.screenshot({ path: targetPath, fullPage: false });
         } catch (err) {
             console.warn(`⚠️ Skipped/Warning for ${p.name}: ${err.message}`);
         }

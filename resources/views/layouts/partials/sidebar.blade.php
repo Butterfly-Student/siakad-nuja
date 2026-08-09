@@ -47,15 +47,15 @@
 @endphp
 
 <nav x-data class="flex h-full flex-col bg-slate-900 text-slate-300">
-    <div class="flex items-center gap-2.5 px-5 h-16 border-b border-slate-800 shrink-0">
-        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-            <x-icon name="mapel" class="h-5 w-5" />
+    <a href="{{ route('landing') }}" class="group flex items-center gap-2.5 px-5 h-16 border-b border-slate-800 shrink-0 hover:bg-slate-800/60 transition-colors" title="Kembali ke Landing Page">
+        <div class="relative flex h-9 w-9 items-center justify-center transition-transform group-hover:scale-105">
+            <img src="{{ asset('images/logo-nuja-karduluk.png') }}" alt="Logo Yayasan Nurul Jadid Karduluk" class="h-full w-full object-contain filter drop-shadow-[0_2px_6px_rgba(0,140,227,0.4)]">
         </div>
         <div class="leading-tight">
-            <div class="font-bold text-white">SIAKAD NUJA</div>
-            <div class="text-[10px] uppercase tracking-wider text-slate-500">Nurul Jadid</div>
+            <div class="font-bold text-white transition-colors group-hover:text-brand-400">SIAKAD NUJA</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">Nurul Jadid</div>
         </div>
-    </div>
+    </a>
 
     <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         @foreach ($navSections as $section)
@@ -81,17 +81,5 @@
                 </div>
             @endif
         @endforeach
-    </div>
-
-    <div class="border-t border-slate-800 p-3 shrink-0">
-        <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800">
-            <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-white">
-                {{ strtoupper(substr($user->nama ?? 'U', 0, 1)) }}
-            </div>
-            <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium text-white">{{ $user->nama ?? 'User' }}</div>
-                <div class="text-xs capitalize text-slate-400">{{ $user->role ?? '' }}</div>
-            </div>
-        </a>
     </div>
 </nav>

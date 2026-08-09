@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SiswaRequest;
-use App\Jobs\SendWhatsappMessage;
 use App\Models\Kelas;
 use App\Models\OrangTua;
 use App\Models\Siswa;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,50 +107,45 @@ class SiswaController extends Controller
 
         $siswa->load('kelas');
 
-        // Ambil semua wali murid dari siswa ini yang memiliki no_wa / no_hp
-        $waliList = OrangTua::where('siswa_id', $siswa->id)
-            ->where(function ($q): void {
-                $q->whereNotNull('no_wa')->orWhereNotNull('no_hp');
-            })
-            ->get();
+        // Ambil kontak utama wali murid dari siswa ini
+        $wali = $siswa->getKontakUtamaWali();
 
-        if ($waliList->isEmpty()) {
-            return redirect()->back()->with('error', 'Gagal mengirim teguran: Siswa ini belum memiliki data Wali / Kontak WhatsApp terdaftar.');
+        if (! $wali || ! ($wali->no_wa ?? $wali->no_hp)) {
+            return redirect()->back()->with('error', 'Gagal mengirim teguran: Siswa ini belum memiliki Kontak Utama WhatsApp terdaftar.');
         }
 
         $jenisTeguran   = $request->input('jenis_teguran');
         $catatan        = trim($request->input('catatan'));
         $perluKeSekolah = $request->boolean('perlu_ke_sekolah');
 
-        $sentCount    = 0;
-        $namaWaliList = [];
+        $gateway = app(WhatsappGatewayService::class);
+        $noTarget = $wali->no_wa ?? $wali->no_hp;
+        $namaKelas = $siswa->kelas?->nama_kelas ?? '—';
 
-        foreach ($waliList as $wali) {
-            $noTarget = $wali->no_wa ?? $wali->no_hp;
-            if (!$noTarget) {
-                continue;
-            }
+        $pesan  = "⚠️ *PEMBERITAHUAN / CATATAN SEKOLAH*\n";
+        $pesan .= "Yth. Bpk/Ibu *{$wali->nama}*,\n\n";
+        $pesan .= "Memberitahukan catatan mengenai Ananda *{$siswa->nama_lengkap}* (Kelas {$namaKelas}):\n";
+        $pesan .= "• *Perihal*: {$jenisTeguran}\n";
+        $pesan .= "• *Catatan*: {$catatan}\n";
 
-            $namaKelas = $siswa->kelas?->nama_kelas ?? '—';
-
-            $pesan  = "⚠️ *PEMBERITAHUAN / CATATAN SEKOLAH*\n";
-            $pesan .= "Yth. Bpk/Ibu *{$wali->nama}*,\n\n";
-            $pesan .= "Memberitahukan catatan mengenai Ananda *{$siswa->nama_lengkap}* (Kelas {$namaKelas}):\n";
-            $pesan .= "• *Perihal*: {$jenisTeguran}\n";
-            $pesan .= "• *Catatan*: {$catatan}\n";
-
-            if ($perluKeSekolah) {
-                $pesan .= "\n📌 *Tindak Lanjut*: Bapak/Ibu dimohon untuk berkoordinasi dengan wali kelas / hadir ke sekolah.";
-            }
-
-            $pesan .= "\n\n— SIAKAD Nurul Jadid Karduluk";
-
-            SendWhatsappMessage::dispatch($noTarget, $pesan, 'teguran', $wali->id, $siswa->id);
-            $sentCount++;
-            $namaWaliList[] = $wali->nama;
+        if ($perluKeSekolah) {
+            $pesan .= "\n📌 *Tindak Lanjut*: Bapak/Ibu dimohon untuk berkoordinasi dengan wali kelas / hadir ke sekolah.";
         }
 
-        $namesStr = implode(', ', $namaWaliList);
-        return redirect()->back()->with('success', "Peringatan WhatsApp berhasil dikirim ke {$sentCount} Wali Murid ({$namesStr}).");
+        $pesan .= "\n\n— SIAKAD Nurul Jadid Karduluk";
+
+        $success = $gateway->sendNotification(
+            noHp: $noTarget,
+            pesan: $pesan,
+            jenis: 'teguran',
+            orangTuaId: $wali->id,
+            siswaId: $siswa->id
+        );
+
+        if ($success) {
+            return redirect()->back()->with('success', "Peringatan WhatsApp berhasil terkirim ke Kontak Utama Wali Murid: {$wali->nama} ({$noTarget}).");
+        }
+
+        return redirect()->back()->with('error', "Gagal mengirim teguran ke Wali Murid ({$wali->nama} - {$noTarget}). Pastikan nomor WhatsApp terdaftar dan aktif.");
     }
 }

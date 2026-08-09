@@ -34,7 +34,12 @@ class OrangTuaController extends Controller
 
     public function store(OrangTuaRequest $request): RedirectResponse
     {
-        OrangTua::create($request->validated());
+        $data = $request->validated();
+        if (! empty($data['is_kontak_utama']) && ! empty($data['siswa_id'])) {
+            OrangTua::where('siswa_id', $data['siswa_id'])->update(['is_kontak_utama' => false]);
+        }
+
+        OrangTua::create($data);
 
         return redirect()->route('orang-tua.index')->with('success', 'Orang tua berhasil ditambahkan.');
     }
@@ -55,7 +60,16 @@ class OrangTuaController extends Controller
 
     public function update(OrangTuaRequest $request, OrangTua $orangTua): RedirectResponse
     {
-        $orangTua->update($request->validated());
+        $data = $request->validated();
+        $siswaId = $data['siswa_id'] ?? $orangTua->siswa_id;
+
+        if (! empty($data['is_kontak_utama']) && $siswaId) {
+            OrangTua::where('siswa_id', $siswaId)
+                ->where('id', '!=', $orangTua->id)
+                ->update(['is_kontak_utama' => false]);
+        }
+
+        $orangTua->update($data);
 
         return redirect()->route('orang-tua.index')->with('success', 'Orang tua berhasil diperbarui.');
     }

@@ -5,7 +5,7 @@
 @section('content')
 @php $isAdmin = auth()->user()->isAdmin(); @endphp
 
-<x-page-header title="Jadwal Pelajaran" subtitle="Kelola jadwal pelajaran per kelas.">
+<x-page-header title="Jadwal Pelajaran" :subtitle="$isAdmin ? 'Kelola jadwal pelajaran per kelas.' : 'Daftar jadwal mengajar Anda.'">
     @if ($isAdmin)
         <x-slot:actions>
             <x-button :href="route('jadwal.create')" variant="primary">
@@ -16,6 +16,20 @@
 </x-page-header>
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+    @if ($isAdmin && isset($guruList) && $guruList->isNotEmpty())
+        <form method="GET" class="w-full sm:w-auto">
+            @foreach (request()->except(['guru_id', 'page']) as $k => $v)
+                @if (! is_array($v)) <input type="hidden" name="{{ $k }}" value="{{ $v }}"> @endif
+            @endforeach
+            <select name="guru_id" onchange="this.form.submit()"
+                class="block w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <option value="">Semua Guru</option>
+                @foreach ($guruList as $g)
+                    <option value="{{ $g->id }}" @selected(request('guru_id') == $g->id)>{{ $g->nama_lengkap }}</option>
+                @endforeach
+            </select>
+        </form>
+    @endif
     <form method="GET" class="w-full sm:w-auto">
         @foreach (request()->except(['kelas_id', 'page']) as $k => $v)
             @if (! is_array($v)) <input type="hidden" name="{{ $k }}" value="{{ $v }}"> @endif

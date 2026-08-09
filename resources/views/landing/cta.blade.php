@@ -28,7 +28,7 @@
         </h2>
 
         <p class="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-slate-400">
-            Bergabunglah dengan PP. Nurul Jadid dalam mengelola administrasi akademik yang cerdas, transparan, dan modern. Masuk dengan akun yang diberikan administrator.
+            Bergabunglah bersama Yayasan Nurul Jadid Karduluk Sumenep dalam mengelola administrasi akademik yang cerdas, transparan, dan modern. Masuk dengan akun yang diberikan administrator.
         </p>
 
         <div class="mt-12 flex flex-col items-center justify-center gap-5 sm:flex-row">

@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/kehadiran', [LaporanController::class, 'kehadiran'])->name('laporan.kehadiran');
         Route::get('laporan/nilai', [LaporanController::class, 'nilai'])->name('laporan.nilai');
+        Route::get('laporan/jadwal', [LaporanController::class, 'jadwal'])->name('laporan.jadwal');
 
         // Kirim Teguran WA per Siswa ke Wali
         Route::post('siswa/{siswa}/teguran', [SiswaController::class, 'kirimTeguran'])->name('siswa.teguran');
@@ -104,6 +105,14 @@ Route::middleware('auth')->group(function (): void {
             Route::get('/log-notifikasi', [WhatsappController::class, 'logNotifikasi'])->name('log-notifikasi');
             Route::post('/resend/{notifikasi}', [WhatsappController::class, 'resend'])->name('resend');
             Route::get('/log-chatbot', [WhatsappController::class, 'logChatbot'])->name('log-chatbot');
+
+            // Chatbot Rules Management
+            Route::get('/chatbot-rules', [WhatsappController::class, 'chatbotRules'])->name('chatbot-rules');
+            Route::get('/chatbot-rules/create', [WhatsappController::class, 'createChatbotRule'])->name('chatbot-rules.create');
+            Route::post('/chatbot-rules', [WhatsappController::class, 'storeChatbotRule'])->name('chatbot-rules.store');
+            Route::get('/chatbot-rules/{rule}/edit', [WhatsappController::class, 'editChatbotRule'])->name('chatbot-rules.edit');
+            Route::put('/chatbot-rules/{rule}', [WhatsappController::class, 'updateChatbotRule'])->name('chatbot-rules.update');
+            Route::delete('/chatbot-rules/{rule}', [WhatsappController::class, 'destroyChatbotRule'])->name('chatbot-rules.destroy');
         });
     });
 

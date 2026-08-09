@@ -58,6 +58,23 @@ class UserController extends Controller
             }
         });
 
+        if (! empty($validated['kirim_wa']) && ! empty($validated['no_hp'])) {
+            $roleLabel = $validated['role'] === User::ROLE_ADMIN ? 'Administrator' : 'Guru';
+            $loginUrl  = route('login');
+
+            $pesan  = "🔐 *Informasi Akun SIAKAD Nurul Jadid*\n\n";
+            $pesan .= "Yth. Bpk/Ibu *{$validated['nama']}*,\n\n";
+            $pesan .= "Berikut adalah informasi akun Anda untuk mengakses sistem SIAKAD Nurul Jadid Karduluk:\n";
+            $pesan .= "• *Peran (Role)*: {$roleLabel}\n";
+            $pesan .= "• *Email*: {$validated['email']}\n";
+            $pesan .= "• *Password*: {$validated['password']}\n";
+            $pesan .= "• *URL Login*: {$loginUrl}\n\n";
+            $pesan .= "Mohon untuk menjaga kerahasiaan informasi akun Anda.\n\n";
+            $pesan .= "— SIAKAD Nurul Jadid Karduluk";
+
+            \App\Jobs\SendWhatsappMessage::dispatch($validated['no_hp'], $pesan);
+        }
+
         return redirect()->route('users.index')->with('success', 'Akun pengguna berhasil dibuat.');
     }
 
@@ -99,6 +116,21 @@ class UserController extends Controller
                 );
             }
         });
+
+        if (! empty($validated['kirim_wa']) && ! empty($validated['no_hp']) && ! empty($validated['password'])) {
+            $roleLabel = $validated['role'] === User::ROLE_ADMIN ? 'Administrator' : 'Guru';
+            $loginUrl  = route('login');
+
+            $pesan  = "🔐 *Pembaruan Kredensial Akun SIAKAD*\n\n";
+            $pesan .= "Yth. Bpk/Ibu *{$validated['nama']}*,\n\n";
+            $pesan .= "Kredensial akun SIAKAD Nurul Jadid Karduluk Anda telah diperbarui:\n";
+            $pesan .= "• *Email*: {$validated['email']}\n";
+            $pesan .= "• *Password Baru*: {$validated['password']}\n";
+            $pesan .= "• *URL Login*: {$loginUrl}\n\n";
+            $pesan .= "— SIAKAD Nurul Jadid Karduluk";
+
+            \App\Jobs\SendWhatsappMessage::dispatch($validated['no_hp'], $pesan);
+        }
 
         return redirect()->route('users.index')->with('success', 'Akun pengguna berhasil diperbarui.');
     }

@@ -49,19 +49,20 @@ class PengumumanObserver
             '{tanggal}' => Carbon::parse($pengumuman->tanggal_publish ?? $pengumuman->created_at ?? now())->translatedFormat('d F Y'),
         ]);
 
-        // Filter penerima: Jika ada kelas_id, filter hanya wali dari siswa di kelas tersebut
-        $query = OrangTua::where('is_kontak_utama', true)->whereNotNull('no_wa');
-
+        // Filter penerima: Ambil kontak utama dari setiap siswa (atau per kelas jika diset)
+        $siswaQuery = \App\Models\Siswa::query();
         if ($pengumuman->kelas_id) {
-            $query->whereHas('siswa', function ($q) use ($pengumuman): void {
-                $q->where('kelas_id', $pengumuman->kelas_id);
-            });
+            $siswaQuery->where('kelas_id', $pengumuman->kelas_id);
         }
+        $siswaList = $siswaQuery->get();
 
-        $waliList = $query->get();
-
-        foreach ($waliList as $wali) {
-            SendWhatsappMessage::dispatch($wali->no_wa, $pesan, 'pengumuman', $wali->id, $wali->siswa_id);
+        $sentWaliIds = [];
+        foreach ($siswaList as $siswa) {
+            $wali = $siswa->getKontakUtamaWali();
+            if ($wali && $wali->no_wa && ! in_array($wali->id, $sentWaliIds, true)) {
+                $sentWaliIds[] = $wali->id;
+                SendWhatsappMessage::dispatch($wali->no_wa, $pesan, 'pengumuman', $wali->id, $siswa->id);
+            }
         }
     }
 }

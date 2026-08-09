@@ -201,7 +201,14 @@ class ChatbotService
         ?Siswa $siswaAktif,
         Collection $semua
     ): array {
-        if (!in_array($input, ['1', '2', '3', '4', '5'])) {
+        $rule = \App\Models\ChatbotRule::where('is_active', true)
+            ->where(function ($q) use ($input): void {
+                $q->where('keyword', $input)
+                  ->orWhere('keyword', strtoupper($input));
+            })
+            ->first();
+
+        if (! $rule) {
             return [
                 $this->getMenuUtamaText($orangTuaRef->nama, $siswaAktif, $semua->count() > 1),
                 'MENU_UTAMA',
@@ -210,21 +217,20 @@ class ChatbotService
             ];
         }
 
-        $balasan = match ($input) {
-            '1' => $this->getInfoNilai($siswaAktif),
-            '2' => $this->getInfoKehadiran($siswaAktif),
-            '3' => $this->getInfoTagihan($siswaAktif),
-            '4' => $this->getInfoAgenda(),
-            '5' => $this->getCsInfo(),
-        };
-
-        $intent = match ($input) {
-            '1' => 'INFO_NILAI',
-            '2' => 'INFO_KEHADIRAN',
-            '3' => 'INFO_TAGIHAN',
-            '4' => 'INFO_AGENDA',
-            '5' => 'CS_CONTACT',
-        };
+        if ($rule->tipe_action === 'system_query') {
+            $balasan = match ($rule->action_key) {
+                'info_nilai'     => $this->getInfoNilai($siswaAktif),
+                'info_kehadiran' => $this->getInfoKehadiran($siswaAktif),
+                'info_tagihan'   => $this->getInfoTagihan($siswaAktif),
+                'info_agenda'    => $this->getInfoAgenda(),
+                'cs_contact'     => $this->getCsInfo(),
+                default          => 'Informasi tidak tersedia.',
+            };
+            $intent = strtoupper($rule->action_key ?? 'SYSTEM_QUERY');
+        } else {
+            $balasan = $this->parseTemplate($rule->isi_balasan ?? '', $orangTuaRef, $siswaAktif);
+            $intent  = 'CUSTOM_RULE_' . strtoupper($rule->keyword);
+        }
 
         $footer = "\n\nKetik 'MENU' untuk kembali ke menu.";
         if ($semua->count() > 1) {
@@ -232,6 +238,15 @@ class ChatbotService
         }
 
         return [$balasan . $footer, 'MENU_UTAMA', $siswaAktif?->id, $intent];
+    }
+
+    private function parseTemplate(string $template, OrangTua $orangTua, ?Siswa $siswa): string
+    {
+        return strtr($template, [
+            '{nama_wali}'  => $orangTua->nama,
+            '{nama_siswa}' => $siswa?->nama_lengkap ?? 'Ananda',
+            '{kelas}'      => $siswa?->kelas?->nama_kelas ?? '—',
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -258,18 +273,21 @@ class ChatbotService
             $header .= "\nAnanda: *{$siswa->nama_lengkap}* (Kelas {$kelas})";
         }
 
-        $menu = "\n\nKetik angka layanan:\n"
-            . "[1] 📊 Info Nilai Rapor\n"
-            . "[2] 📋 Info Rekap Kehadiran\n"
-            . "[3] 💳 Info Tagihan & Pembayaran\n"
-            . "[4] 📢 Info Agenda Sekolah Terbaru\n"
-            . "[5] 📞 Hubungi Customer Service";
+        $rules = \App\Models\ChatbotRule::where('is_active', true)
+            ->orderBy('urutan')
+            ->orderBy('id')
+            ->get();
 
-        if ($punya_banyak_anak) {
-            $menu .= "\n\nKetik 'GANTI ANAK' untuk mengganti pilihan anak.";
+        $menu = "\n\nKetik angka/layanan:\n";
+        foreach ($rules as $rule) {
+            $menu .= "[{$rule->keyword}] {$rule->judul_menu}\n";
         }
 
-        return $header . $menu;
+        if ($punya_banyak_anak) {
+            $menu .= "\nKetik 'GANTI ANAK' untuk mengganti pilihan anak.";
+        }
+
+        return rtrim($header . $menu);
     }
 
     // ─────────────────────────────────────────────────────────

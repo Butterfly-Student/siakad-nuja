@@ -22,12 +22,9 @@ class NilaiObserver
             return;
         }
 
-        $wali = OrangTua::where('siswa_id', $siswa->id)
-            ->where('is_kontak_utama', true)
-            ->whereNotNull('no_wa')
-            ->first();
+        $wali = $siswa->getKontakUtamaWali();
 
-        if (!$wali) {
+        if (!$wali || !$wali->no_wa) {
             return;
         }
 

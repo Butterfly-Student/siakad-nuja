@@ -111,8 +111,9 @@ class WhatsappGatewayService
 
         // Update status log
         $log->update([
-            'status'       => $success ? 'terkirim' : 'gagal',
-            'dikirim_pada' => $success ? now() : null,
+            'status'        => $success ? 'terkirim' : 'gagal',
+            'dikirim_pada'  => $success ? now() : null,
+            'error_message' => $success ? null : 'Gagal terkirim (Nomor tidak terdaftar di WhatsApp atau gateway offline)',
         ]);
 
         return $success;

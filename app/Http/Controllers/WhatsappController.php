@@ -182,4 +182,76 @@ class WhatsappController extends Controller
 
         return view('whatsapp.log-chatbot', compact('logs'));
     }
+
+    /**
+     * Manajemen Rule Chatbot (Daftar Rule & Menu)
+     */
+    public function chatbotRules(): View
+    {
+        $rules = \App\Models\ChatbotRule::when(request('q'), function ($query, string $q): void {
+            $query->where('keyword', 'like', "%{$q}%")
+                ->orWhere('judul_menu', 'like', "%{$q}%");
+        })
+        ->orderBy('urutan')
+        ->orderBy('id')
+        ->paginate(15)
+        ->withQueryString();
+
+        return view('whatsapp.rules.index', compact('rules'));
+    }
+
+    public function createChatbotRule(): View
+    {
+        return view('whatsapp.rules.create');
+    }
+
+    public function storeChatbotRule(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'keyword'     => ['required', 'string', 'max:50', 'unique:chatbot_rules,keyword'],
+            'judul_menu'  => ['required', 'string', 'max:150'],
+            'tipe_action' => ['required', 'in:system_query,static_text'],
+            'action_key'  => ['nullable', 'required_if:tipe_action,system_query', 'string', 'max:50'],
+            'isi_balasan' => ['nullable', 'required_if:tipe_action,static_text', 'string'],
+            'urutan'      => ['required', 'integer', 'min:0'],
+            'is_active'   => ['nullable', 'boolean'],
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        \App\Models\ChatbotRule::create($validated);
+
+        return redirect()->route('whatsapp.chatbot-rules')->with('success', 'Rule chatbot berhasil ditambahkan.');
+    }
+
+    public function editChatbotRule(\App\Models\ChatbotRule $rule): View
+    {
+        return view('whatsapp.rules.edit', compact('rule'));
+    }
+
+    public function updateChatbotRule(Request $request, \App\Models\ChatbotRule $rule): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'keyword'     => ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('chatbot_rules', 'keyword')->ignore($rule->id)],
+            'judul_menu'  => ['required', 'string', 'max:150'],
+            'tipe_action' => ['required', 'in:system_query,static_text'],
+            'action_key'  => ['nullable', 'required_if:tipe_action,system_query', 'string', 'max:50'],
+            'isi_balasan' => ['nullable', 'required_if:tipe_action,static_text', 'string'],
+            'urutan'      => ['required', 'integer', 'min:0'],
+            'is_active'   => ['nullable', 'boolean'],
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
+
+        $rule->update($validated);
+
+        return redirect()->route('whatsapp.chatbot-rules')->with('success', 'Rule chatbot berhasil diperbarui.');
+    }
+
+    public function destroyChatbotRule(\App\Models\ChatbotRule $rule): \Illuminate\Http\RedirectResponse
+    {
+        $rule->delete();
+
+        return redirect()->route('whatsapp.chatbot-rules')->with('success', 'Rule chatbot berhasil dihapus.');
+    }
 }

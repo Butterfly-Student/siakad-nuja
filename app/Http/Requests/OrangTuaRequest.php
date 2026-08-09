@@ -24,6 +24,7 @@ class OrangTuaRequest extends FormRequest
             'nama' => ['required', 'string', 'max:150'],
             'hubungan' => ['nullable', Rule::in(['Ayah', 'Ibu', 'Wali'])],
             'no_hp' => ['nullable', 'string', 'max:20'],
+            'no_wa' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
             'pekerjaan' => ['nullable', 'string', 'max:100'],
             'is_kontak_utama' => ['nullable', 'boolean'],
@@ -45,6 +46,7 @@ class OrangTuaRequest extends FormRequest
         return [
             'siswa_id' => 'siswa',
             'no_hp' => 'nomor HP',
+            'no_wa' => 'nomor WhatsApp',
             'is_kontak_utama' => 'kontak utama',
         ];
     }
