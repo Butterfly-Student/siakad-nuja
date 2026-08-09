@@ -124,6 +124,11 @@ class WhatsappController extends Controller
                 'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {nama_tagihan}, {nominal}, {tanggal_bayar}',
                 'default' => "✅ *Pembayaran Berhasil*\nYth. Bpk/Ibu {nama_wali},\n\nPembayaran *{nama_tagihan}* Ananda *{nama_siswa}* sebesar *Rp {nominal}* pada {tanggal_bayar} telah dikonfirmasi LUNAS.\n\nTerima kasih! 🙏\n\n— SIAKAD Nurul Jadid Karduluk",
             ],
+            'template_teguran' => [
+                'label'   => 'Notifikasi Teguran & Peringatan Wali',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {keterangan}, {tanggal}',
+                'default' => "⚠️ *Pemberitahuan Teguran Sekolah*\nYth. Bpk/Ibu {nama_wali},\n\nDisampaikan mengenai Ananda *{nama_siswa}*:\n{keterangan}\n\nTanggal: {tanggal}\n\nMohon kerjasamanya untuk perhatian Bpk/Ibu.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
             'cs_whatsapp' => [
                 'label'   => 'Nomor Customer Service / Admin WA',
                 'hint'    => 'Nomor WhatsApp admin yang akan ditampilkan pada menu chatbot CS (contoh: 081234567890)',
@@ -134,6 +139,7 @@ class WhatsappController extends Controller
         $templates = [];
         foreach ($templateDefinitions as $key => $def) {
             $templates[$key] = [
+                'key'   => $key,
                 'label' => $def['label'],
                 'hint'  => $def['hint'],
                 'value' => Konfigurasi::get($key, $def['default']),
@@ -144,11 +150,46 @@ class WhatsappController extends Controller
     }
 
     /**
+     * Form edit template tunggal
+     */
+    public function editTemplate(string $key): View
+    {
+        $all = $this->getTemplateDefinitions();
+        if (! isset($all[$key])) {
+            abort(404, 'Template tidak ditemukan.');
+        }
+
+        $def = $all[$key];
+        $template = [
+            'key'   => $key,
+            'label' => $def['label'],
+            'hint'  => $def['hint'],
+            'value' => Konfigurasi::get($key, $def['default']),
+        ];
+
+        return view('whatsapp.edit_template', compact('template'));
+    }
+
+    /**
+     * Update template tunggal
+     */
+    public function updateSingleTemplate(string $key, Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'value' => 'required|string',
+        ]);
+
+        Konfigurasi::updateOrCreate(['key' => $key], ['value' => $request->input('value')]);
+
+        return redirect()->route('whatsapp.templates')->with('success', 'Template pesan berhasil diperbarui.');
+    }
+
+    /**
      * Simpan semua template
      */
     public function updateTemplates(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $keys = ['template_absensi', 'template_nilai', 'template_tagihan', 'template_pengumuman', 'template_kuitansi', 'cs_whatsapp'];
+        $keys = ['template_absensi', 'template_nilai', 'template_tagihan', 'template_pengumuman', 'template_kuitansi', 'template_teguran', 'cs_whatsapp'];
 
         foreach ($keys as $key) {
             if ($request->has($key)) {
@@ -157,6 +198,47 @@ class WhatsappController extends Controller
         }
 
         return redirect()->route('whatsapp.templates')->with('success', 'Template pesan berhasil disimpan.');
+    }
+
+    private function getTemplateDefinitions(): array
+    {
+        return [
+            'template_absensi' => [
+                'label'   => 'Notifikasi Absensi & Kehadiran',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {kelas}, {status}, {hari}, {tanggal}, {keterangan}',
+                'default' => "🔔 *Notifikasi Kehadiran*\nYth. Bpk/Ibu {nama_wali},\n\nAnanda *{nama_siswa}* ({kelas}) tercatat *{status}* pada hari {hari}, {tanggal}.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_nilai' => [
+                'label'   => 'Notifikasi Nilai Rapor Baru',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {kelas}, {mapel}, {nilai_harian}, {nilai_uts}, {nilai_uas}, {nilai_akhir}, {predikat}',
+                'default' => "📊 *Notifikasi Nilai Baru*\nYth. Bpk/Ibu {nama_wali},\n\nNilai *{mapel}* Ananda *{nama_siswa}* telah diinput:\n• Tugas  : {nilai_harian}\n• UTS    : {nilai_uts}\n• UAS    : {nilai_uas}\n• *Nilai Akhir : {nilai_akhir} ({predikat})*\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_tagihan' => [
+                'label'   => 'Notifikasi Tagihan Pembayaran',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {nama_tagihan}, {nominal}',
+                'default' => "💳 *Notifikasi Tagihan*\nYth. Bpk/Ibu {nama_wali},\n\nTagihan baru untuk Ananda *{nama_siswa}*:\n• Nama   : {nama_tagihan}\n• Nominal: Rp {nominal}\n\nMohon untuk segera melakukan pembayaran.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_pengumuman' => [
+                'label'   => 'Notifikasi Broadcast Pengumuman',
+                'hint'    => 'Variabel: {judul}, {isi}, {tanggal}',
+                'default' => "📢 *Pengumuman Sekolah*\n*{judul}*\n\n{isi}\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_kuitansi' => [
+                'label'   => 'Notifikasi Pembayaran Lunas (Kuitansi)',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {nama_tagihan}, {nominal}, {tanggal_bayar}',
+                'default' => "✅ *Pembayaran Berhasil*\nYth. Bpk/Ibu {nama_wali},\n\nPembayaran *{nama_tagihan}* Ananda *{nama_siswa}* sebesar *Rp {nominal}* pada {tanggal_bayar} telah dikonfirmasi LUNAS.\n\nTerima kasih! 🙏\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_teguran' => [
+                'label'   => 'Notifikasi Teguran & Peringatan Wali',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {keterangan}, {tanggal}',
+                'default' => "⚠️ *Pemberitahuan Teguran Sekolah*\nYth. Bpk/Ibu {nama_wali},\n\nDisampaikan mengenai Ananda *{nama_siswa}*:\n{keterangan}\n\nTanggal: {tanggal}\n\nMohon kerjasamanya untuk perhatian Bpk/Ibu.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'cs_whatsapp' => [
+                'label'   => 'Nomor Customer Service / Admin WA',
+                'hint'    => 'Nomor WhatsApp admin yang akan ditampilkan pada menu chatbot CS (contoh: 081234567890)',
+                'default' => '081234567890',
+            ],
+        ];
     }
 
     /**

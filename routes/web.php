@@ -102,6 +102,8 @@ Route::middleware('auth')->group(function (): void {
             Route::post('/reconnect', [WhatsappController::class, 'reconnect'])->name('reconnect');
             Route::get('/templates', [WhatsappController::class, 'templates'])->name('templates');
             Route::put('/templates', [WhatsappController::class, 'updateTemplates'])->name('templates.update');
+            Route::get('/templates/{key}/edit', [WhatsappController::class, 'editTemplate'])->name('templates.edit');
+            Route::put('/templates/{key}', [WhatsappController::class, 'updateSingleTemplate'])->name('templates.single-update');
             Route::get('/log-notifikasi', [WhatsappController::class, 'logNotifikasi'])->name('log-notifikasi');
             Route::post('/resend/{notifikasi}', [WhatsappController::class, 'resend'])->name('resend');
             Route::get('/log-chatbot', [WhatsappController::class, 'logChatbot'])->name('log-chatbot');

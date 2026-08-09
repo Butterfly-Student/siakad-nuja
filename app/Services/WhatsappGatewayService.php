@@ -69,30 +69,11 @@ class WhatsappGatewayService
     public function send(string $noHp, string $pesan): bool
     {
         try {
-            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
-                try {
-                    \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
-                    Log::info("[LaravelWhatsApp] Berhasil kirim ke {$noHp}");
-                    return true;
-                } catch (\Exception $e) {
-                    Log::warning("[LaravelWhatsApp] Facade fallback ke Go-WA API: " . $e->getMessage());
-                }
-            }
-
-            $response = $this->makeRequest('POST', '/send/message', [
-                'phone'   => $this->toJid($noHp),
-                'message' => $pesan,
-            ]);
-
-            if ($response->successful()) {
-                Log::info("[GOWA] Berhasil kirim ke {$noHp}");
-                return true;
-            }
-
-            Log::error("[GOWA] Gagal kirim ke {$noHp}: HTTP " . $response->status() . ' — ' . $response->body());
-            return false;
+            \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
+            Log::info("[LaravelWhatsApp] Berhasil kirim ke {$noHp}");
+            return true;
         } catch (\Exception $e) {
-            Log::error("[WhatsApp] Exception kirim ke {$noHp}: " . $e->getMessage());
+            Log::error("[LaravelWhatsApp] Exception kirim ke {$noHp}: " . $e->getMessage());
             return false;
         }
     }
@@ -130,130 +111,93 @@ class WhatsappGatewayService
     }
 
     /**
-     * Cek status koneksi Go-WA.
-     *
-     * Go-WA Endpoint: GET /app/status
-     * Response: { status: 200, code: "SUCCESS", results: { is_connected, is_logged_in, device_id, jid } }
-     *
-     * Return array dengan key: 'status', 'is_connected', 'is_logged_in', 'jid', 'device_id'
+     * Cek status koneksi laravel-whatsapp.
      */
     public function getStatus(): array
     {
         try {
-            $response = $this->makeRequest('GET', '/app/status');
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                $sessionState = \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->state();
+                $state        = strtolower($sessionState['status'] ?? 'disconnected');
 
-            if ($response->successful()) {
-                $data    = $response->json();
-                $results = $data['results'] ?? [];
-
-                $isConnected = $results['is_connected'] ?? false;
-                $isLoggedIn  = $results['is_logged_in'] ?? false;
-
-                // Map ke status string untuk kompatibilitas view
-                $statusStr = match (true) {
-                    $isConnected && $isLoggedIn  => 'CONNECTED',
-                    $isConnected && !$isLoggedIn => 'SCAN_QR',
-                    default                      => 'DISCONNECTED',
+                $statusStr = match ($state) {
+                    'ready', 'authenticated' => 'CONNECTED',
+                    'qr'                     => 'SCAN_QR',
+                    default                  => 'DISCONNECTED',
                 };
 
                 return [
                     'status'       => $statusStr,
-                    'is_connected' => $isConnected,
-                    'is_logged_in' => $isLoggedIn,
-                    'jid'          => $results['jid'] ?? null,
-                    'device_id'    => $results['device_id'] ?? $this->deviceId,
+                    'is_connected' => in_array($state, ['ready', 'authenticated'], true),
+                    'is_logged_in' => in_array($state, ['ready', 'authenticated'], true),
+                    'jid'          => $sessionState['id'] ?? 'main',
+                    'device_id'    => 'laravel-whatsapp-sidecar',
                 ];
             }
 
-            return ['status' => 'DISCONNECTED', 'device_id' => $this->deviceId];
+            return ['status' => 'DISCONNECTED', 'device_id' => 'laravel-whatsapp-sidecar'];
         } catch (\Exception $e) {
-            Log::warning('[GOWA] Tidak bisa cek status: ' . $e->getMessage());
-            return ['status' => 'ERROR', 'message' => $e->getMessage()];
+            Log::warning('[LaravelWhatsApp] tidak bisa cek status sidecar: ' . $e->getMessage());
+            return ['status' => 'DISCONNECTED', 'message' => $e->getMessage()];
         }
     }
 
     /**
-     * Trigger QR code login via Go-WA.
-     *
-     * Go-WA Endpoint: GET /app/login
-     * Response: { status: 200, code: "SUCCESS", results: { qr_link: "/..." } }
-     *
-     * Return URL gambar QR atau null jika tidak tersedia.
+     * Trigger QR code login via laravel-whatsapp sidecar.
      */
     public function getQrCode(): ?string
     {
         try {
-            $response = $this->makeRequest('GET', '/app/login');
-
-            if ($response->successful()) {
-                $data    = $response->json();
-                $qrLink  = $data['results']['qr_link'] ?? null;
-
-                if ($qrLink) {
-                    // qr_link biasanya path relatif, jadi gabungkan dengan base URL
-                    return $this->baseUrl . '/' . ltrim($qrLink, '/');
-                }
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                $qrData = \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->qr();
+                return $qrData['qr'] ?? null;
             }
 
             return null;
         } catch (\Exception $e) {
-            Log::warning('[GOWA] Tidak bisa ambil QR: ' . $e->getMessage());
+            Log::warning('[LaravelWhatsApp] Tidak bisa ambil QR: ' . $e->getMessage());
             return null;
         }
     }
 
     /**
-     * Login via pairing code (alternatif selain QR).
-     *
-     * Go-WA Endpoint: GET /app/login-with-code?phone=628xxx
+     * Login via pairing code.
      */
     public function loginWithCode(string $phone): ?string
     {
-        try {
-            $response = $this->makeRequest('GET', '/app/login-with-code', [], [
-                'phone' => $this->normalisasiNomor($phone),
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                return $data['results']['code'] ?? null;
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            Log::warning('[GOWA] Tidak bisa login with code: ' . $e->getMessage());
-            return null;
-        }
+        return null;
     }
 
     /**
-     * Logout device dari WhatsApp.
-     *
-     * Go-WA Endpoint: GET /app/logout
+     * Logout device dari WhatsApp via laravel-whatsapp.
      */
     public function logout(): bool
     {
         try {
-            $response = $this->makeRequest('GET', '/app/logout');
-            return $response->successful();
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->stop();
+                return true;
+            }
+            return false;
         } catch (\Exception $e) {
-            Log::error('[GOWA] Logout error: ' . $e->getMessage());
+            Log::error('[LaravelWhatsApp] Logout error: ' . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Reconnect device ke WhatsApp.
-     *
-     * Go-WA Endpoint: GET /app/reconnect
+     * Reconnect device ke WhatsApp via laravel-whatsapp.
      */
     public function reconnect(): bool
     {
         try {
-            $response = $this->makeRequest('GET', '/app/reconnect');
-            return $response->successful();
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->start();
+                return true;
+            }
+            return false;
         } catch (\Exception $e) {
-            Log::error('[GOWA] Reconnect error: ' . $e->getMessage());
+            Log::error('[LaravelWhatsApp] Reconnect error: ' . $e->getMessage());
             return false;
         }
     }
