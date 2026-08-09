@@ -10,15 +10,6 @@ use Kstmostofa\LaravelWhatsApp\Facades\WhatsApp;
 
 class WhatsappGatewayService
 {
-    private string $phoneSuffix;
-    private int $timeout;
-
-    public function __construct()
-    {
-        $this->phoneSuffix = (string) config('whatsapp.phone_suffix', '@s.whatsapp.net');
-        $this->timeout     = (int) config('whatsapp.timeout', 30);
-    }
-
     /**
      * Normalisasi nomor HP ke format internasional 628xxx (tanpa tanda +).
      */
@@ -34,13 +25,28 @@ class WhatsappGatewayService
     }
 
     /**
-     * Kirim pesan teks via laravel-whatsapp facade.
+     * Format nomor ke JID WhatsApp Web sidecar (e.g., "628123456789@c.us")
+     */
+    public function toJid(string $noHp): string
+    {
+        $normalized = $this->normalisasiNomor($noHp);
+
+        if (str_contains($normalized, '@')) {
+            return $normalized;
+        }
+
+        return $normalized . '@c.us';
+    }
+
+    /**
+     * Kirim pesan teks via laravel-whatsapp facade (Web sidecar backend).
      */
     public function send(string $noHp, string $pesan): bool
     {
         try {
-            WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
-            Log::info("[LaravelWhatsApp] Berhasil kirim ke {$noHp}");
+            $toJid = $this->toJid($noHp);
+            WhatsApp::send($toJid, $pesan, backend: 'web');
+            Log::info("[LaravelWhatsApp] Berhasil kirim ke {$toJid}");
             return true;
         } catch (\Exception $e) {
             Log::error("[LaravelWhatsApp] Exception kirim ke {$noHp}: " . $e->getMessage());
