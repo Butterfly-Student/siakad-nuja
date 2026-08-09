@@ -98,20 +98,45 @@ class WhatsappController extends Controller
      */
     public function templates(): View
     {
-        $templateKeys = [
-            'template_absensi'   => 'Notifikasi Absensi',
-            'template_nilai'     => 'Notifikasi Nilai Baru',
-            'template_tagihan'   => 'Notifikasi Tagihan Baru',
-            'template_pengumuman'=> 'Notifikasi Pengumuman',
-            'template_kuitansi'  => 'Notifikasi Pembayaran Lunas',
-            'cs_whatsapp'        => 'Nomor Customer Service',
+        $templateDefinitions = [
+            'template_absensi' => [
+                'label'   => 'Notifikasi Absensi & Kehadiran',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {kelas}, {status}, {hari}, {tanggal}, {keterangan}',
+                'default' => "🔔 *Notifikasi Kehadiran*\nYth. Bpk/Ibu {nama_wali},\n\nAnanda *{nama_siswa}* ({kelas}) tercatat *{status}* pada hari {hari}, {tanggal}.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_nilai' => [
+                'label'   => 'Notifikasi Nilai Rapor Baru',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {kelas}, {mapel}, {nilai_harian}, {nilai_uts}, {nilai_uas}, {nilai_akhir}, {predikat}',
+                'default' => "📊 *Notifikasi Nilai Baru*\nYth. Bpk/Ibu {nama_wali},\n\nNilai *{mapel}* Ananda *{nama_siswa}* telah diinput:\n• Tugas  : {nilai_harian}\n• UTS    : {nilai_uts}\n• UAS    : {nilai_uas}\n• *Nilai Akhir : {nilai_akhir} ({predikat})*\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_tagihan' => [
+                'label'   => 'Notifikasi Tagihan Pembayaran',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {nama_tagihan}, {nominal}',
+                'default' => "💳 *Notifikasi Tagihan*\nYth. Bpk/Ibu {nama_wali},\n\nTagihan baru untuk Ananda *{nama_siswa}*:\n• Nama   : {nama_tagihan}\n• Nominal: Rp {nominal}\n\nMohon untuk segera melakukan pembayaran.\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_pengumuman' => [
+                'label'   => 'Notifikasi Broadcast Pengumuman',
+                'hint'    => 'Variabel: {judul}, {isi}, {tanggal}',
+                'default' => "📢 *Pengumuman Sekolah*\n*{judul}*\n\n{isi}\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'template_kuitansi' => [
+                'label'   => 'Notifikasi Pembayaran Lunas (Kuitansi)',
+                'hint'    => 'Variabel: {nama_wali}, {nama_siswa}, {nama_tagihan}, {nominal}, {tanggal_bayar}',
+                'default' => "✅ *Pembayaran Berhasil*\nYth. Bpk/Ibu {nama_wali},\n\nPembayaran *{nama_tagihan}* Ananda *{nama_siswa}* sebesar *Rp {nominal}* pada {tanggal_bayar} telah dikonfirmasi LUNAS.\n\nTerima kasih! 🙏\n\n— SIAKAD Nurul Jadid Karduluk",
+            ],
+            'cs_whatsapp' => [
+                'label'   => 'Nomor Customer Service / Admin WA',
+                'hint'    => 'Nomor WhatsApp admin yang akan ditampilkan pada menu chatbot CS (contoh: 081234567890)',
+                'default' => '081234567890',
+            ],
         ];
 
         $templates = [];
-        foreach ($templateKeys as $key => $label) {
+        foreach ($templateDefinitions as $key => $def) {
             $templates[$key] = [
-                'label' => $label,
-                'value' => Konfigurasi::get($key, ''),
+                'label' => $def['label'],
+                'hint'  => $def['hint'],
+                'value' => Konfigurasi::get($key, $def['default']),
             ];
         }
 

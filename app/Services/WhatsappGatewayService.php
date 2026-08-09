@@ -69,6 +69,16 @@ class WhatsappGatewayService
     public function send(string $noHp, string $pesan): bool
     {
         try {
+            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
+                try {
+                    \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
+                    Log::info("[LaravelWhatsApp] Berhasil kirim ke {$noHp}");
+                    return true;
+                } catch (\Exception $e) {
+                    Log::warning("[LaravelWhatsApp] Facade fallback ke Go-WA API: " . $e->getMessage());
+                }
+            }
+
             $response = $this->makeRequest('POST', '/send/message', [
                 'phone'   => $this->toJid($noHp),
                 'message' => $pesan,
@@ -82,7 +92,7 @@ class WhatsappGatewayService
             Log::error("[GOWA] Gagal kirim ke {$noHp}: HTTP " . $response->status() . ' — ' . $response->body());
             return false;
         } catch (\Exception $e) {
-            Log::error("[GOWA] Exception kirim ke {$noHp}: " . $e->getMessage());
+            Log::error("[WhatsApp] Exception kirim ke {$noHp}: " . $e->getMessage());
             return false;
         }
     }

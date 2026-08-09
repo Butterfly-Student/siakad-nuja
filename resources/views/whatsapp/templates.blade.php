@@ -1,41 +1,49 @@
 @extends('layouts.app')
-@section('title', 'Template Pesan WhatsApp')
-@section('header', 'Template Pesan WhatsApp')
+
+@section('title', 'Template Notifikasi WhatsApp')
 
 @section('content')
-<div class="max-w-3xl">
+<x-page-header title="Template Notifikasi WhatsApp" subtitle="Kelola isi pesan notifikasi otomatis untuk absensi, nilai, tagihan, pengumuman, dan kuitansi.">
+    <x-slot:actions>
+        <x-button :href="route('whatsapp.index')" variant="secondary">
+            Kembali ke Status Gateway
+        </x-button>
+    </x-slot:actions>
+</x-page-header>
+
+<x-card>
     <x-alert />
 
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100">
-            <h3 class="font-bold text-slate-800">Edit Template Notifikasi</h3>
-            <p class="text-sm text-slate-500 mt-0.5">Gunakan placeholder seperti <code class="bg-slate-100 px-1 rounded">{nama_wali}</code>, <code class="bg-slate-100 px-1 rounded">{nama_siswa}</code>, <code class="bg-slate-100 px-1 rounded">{kelas}</code>, <code class="bg-slate-100 px-1 rounded">{status}</code>, <code class="bg-slate-100 px-1 rounded">{tanggal}</code> di dalam template.</p>
-        </div>
+    <form action="{{ route('whatsapp.templates.update') }}" method="POST" class="space-y-6">
+        @csrf
+        @method('PUT')
 
-        <form action="{{ route('whatsapp.templates.update') }}" method="POST" class="p-6 space-y-6">
-            @csrf
-            @method('PUT')
+        @foreach($templates as $key => $tmpl)
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-6 last:border-0 last:pb-0">
+                <label for="{{ $key }}" class="block text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    {{ $tmpl['label'] }}
+                </label>
+                <p class="text-xs text-brand-600 dark:text-brand-400 mb-2 font-mono">
+                    {{ $tmpl['hint'] }}
+                </p>
 
-            @foreach($templates as $key => $tmpl)
-            <div>
-                <label for="{{ $key }}" class="block text-sm font-semibold text-slate-700 mb-1.5">{{ $tmpl['label'] }}</label>
                 @if($key === 'cs_whatsapp')
                     <input type="text" id="{{ $key }}" name="{{ $key }}" value="{{ old($key, $tmpl['value']) }}"
-                        placeholder="Contoh: 6281234567890"
-                        class="w-full rounded-xl border-slate-200 py-2.5 px-4 focus:ring-2 focus:ring-brand-500 text-sm">
+                        placeholder="081234567890"
+                        class="w-full sm:w-1/2 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white shadow-sm text-sm px-4 py-3 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition">
                 @else
                     <textarea id="{{ $key }}" name="{{ $key }}" rows="4"
-                        class="w-full rounded-xl border-slate-200 py-2.5 px-4 focus:ring-2 focus:ring-brand-500 text-sm font-mono">{{ old($key, $tmpl['value']) }}</textarea>
+                        class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white shadow-sm text-sm px-4 py-3 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition font-mono">{{ old($key, $tmpl['value']) }}</textarea>
                 @endif
             </div>
-            @endforeach
+        @endforeach
 
-            <div class="flex justify-end pt-2">
-                <button type="submit" class="bg-brand-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-brand-700 transition shadow-sm">
-                    Simpan Template
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+        <div class="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <x-button type="submit" variant="primary">
+                <x-icon name="check" class="h-4 w-4" /> Simpan Semua Template
+            </x-button>
+            <x-button variant="secondary" :href="route('whatsapp.index')">Batal</x-button>
+        </div>
+    </form>
+</x-card>
 @endsection

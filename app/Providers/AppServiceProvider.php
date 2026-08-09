@@ -37,5 +37,12 @@ class AppServiceProvider extends ServiceProvider
         Nilai::observe(NilaiObserver::class);
         Tagihan::observe(TagihanObserver::class);
         Pengumuman::observe(PengumumanObserver::class);
+
+        if (class_exists(\Kstmostofa\LaravelWhatsApp\Events\Web\MessageReceived::class)) {
+            \Illuminate\Support\Facades\Event::listen(
+                \Kstmostofa\LaravelWhatsApp\Events\Web\MessageReceived::class,
+                \App\Listeners\WhatsappMessageListener::class
+            );
+        }
     }
 }

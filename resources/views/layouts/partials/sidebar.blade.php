@@ -36,11 +36,20 @@
             ],
         ],
         [
+            'label' => 'WhatsApp System',
+            'items' => [
+                ['route' => 'whatsapp.index', 'match' => 'whatsapp.index', 'icon' => 'whatsapp', 'label' => 'Status & Gateway', 'show' => $isAdmin],
+                ['route' => 'whatsapp.chatbot-rules', 'match' => 'whatsapp.chatbot-rules*', 'icon' => 'bot', 'label' => 'Rule Chatbot', 'show' => $isAdmin],
+                ['route' => 'whatsapp.templates', 'match' => 'whatsapp.templates*', 'icon' => 'template', 'label' => 'Template Notifikasi', 'show' => $isAdmin],
+                ['route' => 'whatsapp.log-notifikasi', 'match' => 'whatsapp.log-notifikasi*', 'icon' => 'log', 'label' => 'Log Notifikasi', 'show' => $isAdmin],
+                ['route' => 'whatsapp.log-chatbot', 'match' => 'whatsapp.log-chatbot*', 'icon' => 'chat', 'label' => 'Log Chatbot', 'show' => $isAdmin],
+            ],
+        ],
+        [
             'label' => 'Lainnya',
             'items' => [
                 ['route' => 'pengumuman.index', 'match' => 'pengumuman.*', 'icon' => 'pengumuman', 'label' => 'Pengumuman', 'show' => true],
                 ['route' => 'users.index', 'match' => 'users.*', 'icon' => 'users', 'label' => 'Manajemen Akun', 'show' => $isAdmin],
-                ['route' => 'whatsapp.index', 'match' => 'whatsapp.*', 'icon' => 'whatsapp', 'label' => 'WhatsApp Gateway', 'show' => $isAdmin],
             ],
         ],
     ];
