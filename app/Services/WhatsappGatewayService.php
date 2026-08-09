@@ -5,26 +5,18 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\NotifikasiWhatsapp;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Kstmostofa\LaravelWhatsApp\Facades\WhatsApp;
 
 class WhatsappGatewayService
 {
-    private string $baseUrl;
-    private string $deviceId;
-    private string $username;
-    private string $password;
     private string $phoneSuffix;
     private int $timeout;
 
     public function __construct()
     {
-        $this->baseUrl     = rtrim(config('whatsapp.url', 'http://localhost:3000'), '/');
-        $this->deviceId    = config('whatsapp.device_id', '');
-        $this->username    = config('whatsapp.username', '');
-        $this->password    = config('whatsapp.password', '');
-        $this->phoneSuffix = config('whatsapp.phone_suffix', '@s.whatsapp.net');
-        $this->timeout     = config('whatsapp.timeout', 30);
+        $this->phoneSuffix = (string) config('whatsapp.phone_suffix', '@s.whatsapp.net');
+        $this->timeout     = (int) config('whatsapp.timeout', 30);
     }
 
     /**
@@ -32,44 +24,22 @@ class WhatsappGatewayService
      */
     public function normalisasiNomor(string $noHp): string
     {
-        // Hapus karakter selain angka
         $noHp = preg_replace('/[^0-9]/', '', $noHp);
 
-        // Ganti awalan 0 dengan 62
         if (str_starts_with($noHp, '0')) {
             $noHp = '62' . substr($noHp, 1);
         }
 
-        // Jika sudah ada 62 di depan, biarkan
         return $noHp;
     }
 
     /**
-     * Format nomor ke JID Go-WA (e.g., "628123456789@s.whatsapp.net")
-     */
-    private function toJid(string $noHp): string
-    {
-        $normalized = $this->normalisasiNomor($noHp);
-
-        // Jika sudah mengandung @, kembalikan langsung
-        if (str_contains($normalized, '@')) {
-            return $normalized;
-        }
-
-        return $normalized . $this->phoneSuffix;
-    }
-
-    /**
-     * Kirim pesan teks via Go-WA API.
-     *
-     * Go-WA Endpoint: POST /send/message
-     * Body: { "phone": "628xxx@s.whatsapp.net", "message": "text" }
-     * Header: X-Device-Id (opsional)
+     * Kirim pesan teks via laravel-whatsapp facade.
      */
     public function send(string $noHp, string $pesan): bool
     {
         try {
-            \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
+            WhatsApp::send($this->normalisasiNomor($noHp), $pesan);
             Log::info("[LaravelWhatsApp] Berhasil kirim ke {$noHp}");
             return true;
         } catch (\Exception $e) {
@@ -88,7 +58,6 @@ class WhatsappGatewayService
         ?int $orangTuaId = null,
         ?int $siswaId = null
     ): bool {
-        // Catat ke DB dulu sebagai pending
         $log = NotifikasiWhatsapp::create([
             'orang_tua_id' => $orangTuaId,
             'siswa_id'     => $siswaId,
@@ -100,7 +69,6 @@ class WhatsappGatewayService
 
         $success = $this->send($noHp, $pesan);
 
-        // Update status log
         $log->update([
             'status'        => $success ? 'terkirim' : 'gagal',
             'dikirim_pada'  => $success ? now() : null,
@@ -111,31 +79,27 @@ class WhatsappGatewayService
     }
 
     /**
-     * Cek status koneksi laravel-whatsapp.
+     * Cek status koneksi laravel-whatsapp sidecar.
      */
     public function getStatus(): array
     {
         try {
-            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
-                $sessionState = \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->state();
-                $state        = strtolower($sessionState['status'] ?? 'disconnected');
+            $sessionState = WhatsApp::web('main')->state();
+            $state        = strtolower($sessionState['status'] ?? 'disconnected');
 
-                $statusStr = match ($state) {
-                    'ready', 'authenticated' => 'CONNECTED',
-                    'qr'                     => 'SCAN_QR',
-                    default                  => 'DISCONNECTED',
-                };
+            $statusStr = match ($state) {
+                'ready', 'authenticated' => 'CONNECTED',
+                'qr'                     => 'SCAN_QR',
+                default                  => 'DISCONNECTED',
+            };
 
-                return [
-                    'status'       => $statusStr,
-                    'is_connected' => in_array($state, ['ready', 'authenticated'], true),
-                    'is_logged_in' => in_array($state, ['ready', 'authenticated'], true),
-                    'jid'          => $sessionState['id'] ?? 'main',
-                    'device_id'    => 'laravel-whatsapp-sidecar',
-                ];
-            }
-
-            return ['status' => 'DISCONNECTED', 'device_id' => 'laravel-whatsapp-sidecar'];
+            return [
+                'status'       => $statusStr,
+                'is_connected' => in_array($state, ['ready', 'authenticated'], true),
+                'is_logged_in' => in_array($state, ['ready', 'authenticated'], true),
+                'jid'          => $sessionState['id'] ?? 'main',
+                'device_id'    => 'laravel-whatsapp-sidecar',
+            ];
         } catch (\Exception $e) {
             Log::warning('[LaravelWhatsApp] tidak bisa cek status sidecar: ' . $e->getMessage());
             return ['status' => 'DISCONNECTED', 'message' => $e->getMessage()];
@@ -148,24 +112,12 @@ class WhatsappGatewayService
     public function getQrCode(): ?string
     {
         try {
-            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
-                $qrData = \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->qr();
-                return $qrData['qr'] ?? null;
-            }
-
-            return null;
+            $qrData = WhatsApp::web('main')->qr();
+            return $qrData['qr'] ?? null;
         } catch (\Exception $e) {
             Log::warning('[LaravelWhatsApp] Tidak bisa ambil QR: ' . $e->getMessage());
             return null;
         }
-    }
-
-    /**
-     * Login via pairing code.
-     */
-    public function loginWithCode(string $phone): ?string
-    {
-        return null;
     }
 
     /**
@@ -174,11 +126,8 @@ class WhatsappGatewayService
     public function logout(): bool
     {
         try {
-            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
-                \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->stop();
-                return true;
-            }
-            return false;
+            WhatsApp::web('main')->stop();
+            return true;
         } catch (\Exception $e) {
             Log::error('[LaravelWhatsApp] Logout error: ' . $e->getMessage());
             return false;
@@ -191,11 +140,8 @@ class WhatsappGatewayService
     public function reconnect(): bool
     {
         try {
-            if (class_exists(\Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::class)) {
-                \Kstmostofa\LaravelWhatsApp\Facades\WhatsApp::web('main')->start();
-                return true;
-            }
-            return false;
+            WhatsApp::web('main')->start();
+            return true;
         } catch (\Exception $e) {
             Log::error('[LaravelWhatsApp] Reconnect error: ' . $e->getMessage());
             return false;
@@ -216,36 +162,5 @@ class WhatsappGatewayService
         ]);
 
         return $success;
-    }
-
-    /**
-     * Helper untuk HTTP request ke Go-WA dengan Basic Auth opsional.
-     *
-     * @param string $method   HTTP method (GET/POST)
-     * @param string $endpoint API endpoint path
-     * @param array  $body     Request body (untuk POST)
-     * @param array  $query    Query parameters (untuk GET)
-     */
-    private function makeRequest(string $method, string $endpoint, array $body = [], array $query = [])
-    {
-        $request = Http::timeout($this->timeout);
-
-        // Basic Auth (jika username & password diisi)
-        if ($this->username && $this->password) {
-            $request = $request->withBasicAuth($this->username, $this->password);
-        }
-
-        // Device ID header (jika diisi)
-        if ($this->deviceId) {
-            $request = $request->withHeaders(['X-Device-Id' => $this->deviceId]);
-        }
-
-        $url = $this->baseUrl . $endpoint;
-
-        return match (strtoupper($method)) {
-            'GET'  => $request->get($url, $query),
-            'POST' => $request->post($url, $body),
-            default => throw new \InvalidArgumentException("Method {$method} tidak didukung"),
-        };
     }
 }
