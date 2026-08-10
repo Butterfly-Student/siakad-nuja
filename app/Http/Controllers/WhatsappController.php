@@ -278,7 +278,7 @@ class WhatsappController extends Controller
 
         return redirect()->back()->with(
             $success ? 'success' : 'error',
-            $success ? 'Pesan berhasil dikirim ulang.' : 'Gagal mengirim ulang. Cek koneksi Go-WA.'
+            $success ? 'Pesan berhasil dikirim ulang.' : 'Gagal mengirim ulang. Pastikan service sidecar WhatsApp aktif.'
         );
     }
 
