@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Services\ChatbotService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Kstmostofa\LaravelWhatsApp\Events\Web\MessageReceived;
 
@@ -28,9 +29,13 @@ class WhatsappMessageListener
 
                 $rawFrom = $event->from() ?? '';
                 $body    = $event->body() ?? '';
+                $msgId   = $event->message()['id'] ?? null;
+                $time    = $event->message()['timestamp'] ?? time();
             } else {
                 $rawFrom = (string) (method_exists($event, 'from') ? $event->from() : ($event->from ?? ''));
                 $body    = (string) (method_exists($event, 'body') ? $event->body() : ($event->body ?? ''));
+                $msgId   = method_exists($event, 'id') ? $event->id() : null;
+                $time    = time();
             }
 
             if (empty($rawFrom) || empty($body)) {
@@ -38,13 +43,19 @@ class WhatsappMessageListener
             }
 
             // Filter out ONLY newsletters, status updates, and broadcasts
-            // DO NOT filter out @lid because modern WhatsApp uses @lid JIDs for privacy user chats!
             if (
                 str_contains($rawFrom, '@newsletter') ||
                 str_contains($rawFrom, '@status') ||
                 str_contains($rawFrom, '@broadcast')
             ) {
                 Log::debug("[WhatsappMessageListener] Ignored non-personal channel: {$rawFrom}");
+                return;
+            }
+
+            // Deduplication locking: Ensures each unique incoming message is processed ONLY ONCE
+            $uniqueKey = 'wa_msg_dedup_' . md5(($msgId ?? '') . '_' . $rawFrom . '_' . $body . '_' . $time);
+            if (! Cache::add($uniqueKey, true, 30)) {
+                Log::debug("[WhatsappMessageListener] Skipped duplicate message event dispatch: {$uniqueKey}");
                 return;
             }
 
