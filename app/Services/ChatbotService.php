@@ -23,17 +23,21 @@ class ChatbotService
     /**
      * Entry point utama — dipanggil dari WhatsappWebhookController.
      */
-    public function process(string $noHp, string $pesanMasuk): void
+    public function process(string $noHp, string $pesanMasuk, ?string $senderNumber = null): void
     {
-        // 1. Normalisasi nomor HP yang masuk
-        $noHpNormalized = $this->normalisasiNomor($noHp);
-        $noHpDb         = $this->toLokalFormat($noHpNormalized);
+        // 1. Normalisasi nomor HP yang masuk & senderNumber jika ada
+        $cleanNoHp   = preg_replace('/[^0-9]/', '', $noHp);
+        $cleanSender = $senderNumber ? preg_replace('/[^0-9]/', '', $senderNumber) : null;
 
-        $cleanDigits = preg_replace('/[^0-9]/', '', $noHp);
-        $no62        = str_starts_with($cleanDigits, '0') ? ('62' . substr($cleanDigits, 1)) : $cleanDigits;
-        $no08        = str_starts_with($cleanDigits, '62') ? ('0' . substr($cleanDigits, 2)) : $cleanDigits;
-
-        $targetNumbers = array_unique(array_filter([$cleanDigits, $no62, $no08, $noHp, $noHpNormalized, $noHpDb]));
+        $targetNumbers = array_unique(array_filter([
+            $cleanNoHp,
+            $cleanSender,
+            str_starts_with((string)$cleanSender, '0') ? ('62' . substr($cleanSender, 1)) : $cleanSender,
+            str_starts_with((string)$cleanSender, '62') ? ('0' . substr($cleanSender, 2)) : $cleanSender,
+            str_starts_with($cleanNoHp, '0') ? ('62' . substr($cleanNoHp, 1)) : $cleanNoHp,
+            str_starts_with($cleanNoHp, '62') ? ('0' . substr($cleanNoHp, 2)) : $cleanNoHp,
+            $noHp,
+        ]));
 
         // 2. Cari orang tua berdasarkan pencocokan nomor WA / HP yang valid
         $orangTuaRef = OrangTua::all()->first(function ($ot) use ($targetNumbers) {
@@ -61,7 +65,8 @@ class ChatbotService
                 $balasan = "🏫 *SIAKAD Nurul Jadid Karduluk*\n\nSelamat datang. Nomor Anda belum terdaftar sebagai Wali Siswa.\n\nJika Anda adalah Wali Siswa, silakan hubungi admin sekolah untuk mendaftarkan nomor WhatsApp Anda.";
             }
 
-            $this->balasDanLog($noHp, $pesanMasuk, $balasan, null, null, 'GUEST_USER');
+            $displayNum = $cleanSender ? $this->toLokalFormat($cleanSender) : $this->toLokalFormat($cleanNoHp);
+            $this->balasDanLog($noHp, $pesanMasuk, $balasan, null, null, 'GUEST_USER', $displayNum);
             return;
         }
 
@@ -140,7 +145,8 @@ class ChatbotService
         $session->save();
 
         // 11. Kirim & log
-        $this->balasDanLog($noHp, $pesanMasuk, $balasan, $orangTuaRef->id, $siswaAktif?->id ?? $newAnakId, $intent);
+        $displayNum = $this->toLokalFormat($orangTuaRef->no_wa ?? $orangTuaRef->no_hp ?? $cleanSender ?? $cleanNoHp);
+        $this->balasDanLog($noHp, $pesanMasuk, $balasan, $orangTuaRef->id, $siswaAktif?->id ?? $newAnakId, $intent, $displayNum);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -429,14 +435,17 @@ class ChatbotService
         string $balasan,
         ?int $orangTuaId,
         ?int $siswaId,
-        string $intent
+        string $intent,
+        ?string $displayNoHp = null
     ): void {
         // Dispatch Job async
         SendWhatsappMessage::dispatch($noHp, $balasan);
 
         // Log percakapan
+        $savedPhone = $displayNoHp ?: $this->toLokalFormat($this->normalisasiNomor($noHp));
+
         ChatbotLog::create([
-            'no_hp'       => $this->toLokalFormat($this->normalisasiNomor($noHp)),
+            'no_hp'       => $savedPhone,
             'pesan_masuk' => $pesanMasuk,
             'pesan_keluar'=> $balasan,
             'siswa_id'    => $siswaId,

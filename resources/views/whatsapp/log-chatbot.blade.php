@@ -46,7 +46,7 @@
                     <td class="px-4 py-3">
                         <span class="inline-flex px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600">{{ $log->intent ?? '—' }}</span>
                     </td>
-                    <td class="px-4 py-3 text-xs text-slate-500">{{ $log->created_at?->diffForHumans() }}</td>
+                    <td class="px-4 py-3 text-xs text-slate-500 font-mono">{{ $log->created_at ? $log->created_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') : '—' }}</td>
                 </tr>
                 @empty
                 <tr>

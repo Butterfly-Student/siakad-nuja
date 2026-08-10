@@ -27,15 +27,18 @@ class WhatsappMessageListener
                     return;
                 }
 
-                $rawFrom = $event->from() ?? '';
-                $body    = $event->body() ?? '';
-                $msgId   = $event->message()['id'] ?? null;
-                $time    = $event->message()['timestamp'] ?? time();
+                $rawFrom      = $event->from() ?? '';
+                $body         = $event->body() ?? '';
+                $msg          = $event->message() ?? [];
+                $msgId        = $msg['id'] ?? null;
+                $time         = $msg['timestamp'] ?? time();
+                $senderNumber = $msg['senderNumber'] ?? $msg['author'] ?? null;
             } else {
-                $rawFrom = (string) (method_exists($event, 'from') ? $event->from() : ($event->from ?? ''));
-                $body    = (string) (method_exists($event, 'body') ? $event->body() : ($event->body ?? ''));
-                $msgId   = method_exists($event, 'id') ? $event->id() : null;
-                $time    = time();
+                $rawFrom      = (string) (method_exists($event, 'from') ? $event->from() : ($event->from ?? ''));
+                $body         = (string) (method_exists($event, 'body') ? $event->body() : ($event->body ?? ''));
+                $msgId        = method_exists($event, 'id') ? $event->id() : null;
+                $time         = time();
+                $senderNumber = null;
             }
 
             if (empty($rawFrom) || empty($body)) {
@@ -59,9 +62,9 @@ class WhatsappMessageListener
                 return;
             }
 
-            Log::info("[WhatsappMessageListener] Processing inbound message from {$rawFrom}: {$body}");
+            Log::info("[WhatsappMessageListener] Processing inbound message from {$rawFrom} (sender: {$senderNumber}): {$body}");
 
-            $this->chatbotService->process($rawFrom, (string) $body);
+            $this->chatbotService->process($rawFrom, (string) $body, $senderNumber);
         } catch (\Exception $e) {
             Log::error('[WhatsappMessageListener] Error processing message: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
