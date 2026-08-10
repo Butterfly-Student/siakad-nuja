@@ -25,34 +25,43 @@ class ChatbotService
      */
     public function process(string $noHp, string $pesanMasuk): void
     {
-        // 1. Normalisasi nomor HP
+        // 1. Normalisasi nomor HP yang masuk
         $noHpNormalized = $this->normalisasiNomor($noHp);
-        $noHpDb = $this->toLokalFormat($noHpNormalized);
+        $noHpDb         = $this->toLokalFormat($noHpNormalized);
 
-        // 2. Cari orang tua berdasarkan no_wa (bukan no_hp!)
-        $orangTuaRef = OrangTua::where(function ($q) use ($noHpDb, $noHpNormalized, $noHp): void {
-            $q->where('no_wa', $noHpDb)
-              ->orWhere('no_wa', $noHpNormalized)
-              ->orWhere('no_wa', $noHp);
-        })
-        ->whereNotNull('no_wa')
-        ->first();
+        $cleanDigits = preg_replace('/[^0-9]/', '', $noHp);
+        $no62        = str_starts_with($cleanDigits, '0') ? ('62' . substr($cleanDigits, 1)) : $cleanDigits;
+        $no08        = str_starts_with($cleanDigits, '62') ? ('0' . substr($cleanDigits, 2)) : $cleanDigits;
 
-        // Fallback: coba cari via no_hp biasa jika no_wa belum diisi
-        if (!$orangTuaRef) {
-            $orangTuaRef = OrangTua::where(function ($q) use ($noHpDb, $noHpNormalized, $noHp): void {
-                $q->where('no_hp', $noHpDb)
-                  ->orWhere('no_hp', $noHpNormalized)
-                  ->orWhere('no_hp', $noHp);
-            })
-            ->first();
-        }
+        $targetNumbers = array_unique(array_filter([$cleanDigits, $no62, $no08, $noHp, $noHpNormalized, $noHpDb]));
 
-        if (!$orangTuaRef) {
-            $this->balasDanLog($noHp, $pesanMasuk,
-                "Maaf, nomor Anda tidak terdaftar sebagai Wali Siswa di SIAKAD Nurul Jadid Karduluk.\n\nSilakan hubungi admin sekolah untuk mendaftarkan nomor WhatsApp Anda.",
-                null, null, 'UNKNOWN_USER'
-            );
+        // 2. Cari orang tua berdasarkan pencocokan nomor WA / HP yang valid
+        $orangTuaRef = OrangTua::all()->first(function ($ot) use ($targetNumbers) {
+            $waClean = preg_replace('/[^0-9]/', '', (string) $ot->no_wa);
+            $hpClean = preg_replace('/[^0-9]/', '', (string) $ot->no_hp);
+
+            return (! empty($waClean) && in_array($waClean, $targetNumbers, true))
+                || (! empty($hpClean) && in_array($hpClean, $targetNumbers, true));
+        });
+
+        // Jika nomor belum terdaftar sebagai wali
+        if (! $orangTuaRef) {
+            $rule = \App\Models\ChatbotRule::where('is_active', true)
+                ->where(function ($q) use ($pesanMasuk): void {
+                    $q->where('keyword', trim($pesanMasuk))
+                      ->orWhere('keyword', strtoupper(trim($pesanMasuk)));
+                })
+                ->first();
+
+            if ($rule) {
+                $balasan = ($rule->tipe_action === 'system_query')
+                    ? $this->getInfoAgenda()
+                    : ($rule->isi_balasan ?? 'Informasi tidak tersedia.');
+            } else {
+                $balasan = "🏫 *SIAKAD Nurul Jadid Karduluk*\n\nSelamat datang. Nomor Anda belum terdaftar sebagai Wali Siswa.\n\nJika Anda adalah Wali Siswa, silakan hubungi admin sekolah untuk mendaftarkan nomor WhatsApp Anda.";
+            }
+
+            $this->balasDanLog($noHp, $pesanMasuk, $balasan, null, null, 'GUEST_USER');
             return;
         }
 
