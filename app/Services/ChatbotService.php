@@ -48,6 +48,20 @@ class ChatbotService
                 || (! empty($hpClean) && in_array($hpClean, $targetNumbers, true));
         });
 
+        // Fallback: Jika belum cocok via nomor HP, cek apakah JID ini sudah memiliki sesi aktif terikat ke wali
+        if (! $orangTuaRef) {
+            $existingSession = ChatbotSession::whereNotNull('orang_tua_id')
+                ->where(function ($q) use ($noHp, $cleanNoHp): void {
+                    $q->where('no_hp', $noHp)
+                      ->orWhere('no_hp', $cleanNoHp);
+                })
+                ->first();
+
+            if ($existingSession && $existingSession->orang_tua_id) {
+                $orangTuaRef = OrangTua::find($existingSession->orang_tua_id);
+            }
+        }
+
         // Jika nomor belum terdaftar sebagai wali
         if (! $orangTuaRef) {
             $rule = \App\Models\ChatbotRule::where('is_active', true)
@@ -91,17 +105,25 @@ class ChatbotService
             ? ($semua->first()?->siswa_id ?? $semua->first()?->siswa?->id)
             : null;
 
-        // 4. Ambil atau buat sesi chatbot
-        $noHpSession = $orangTuaRef->no_wa ?? $orangTuaRef->no_hp ?? $noHpDb;
-        $session = ChatbotSession::firstOrCreate(
-            ['no_hp' => $noHpSession],
-            [
+        // 4. Ambil atau buat sesi chatbot (ikatkan ke orang_tua_id dan No HP / JID)
+        $session = ChatbotSession::where('orang_tua_id', $orangTuaRef->id)
+            ->orWhere('no_hp', $noHp)
+            ->orWhere('no_hp', $cleanNoHp)
+            ->first();
+
+        if (! $session) {
+            $session = ChatbotSession::create([
+                'no_hp'            => $noHp,
                 'orang_tua_id'     => $orangTuaRef->id,
                 'state'            => $semua->count() > 1 ? 'PILIH_ANAK' : 'MENU_UTAMA',
                 'anak_terpilih_id' => $singleSiswaId,
                 'last_activity'    => now(),
-            ]
-        );
+            ]);
+        } else {
+            $session->no_hp            = $noHp;
+            $session->orang_tua_id     = $orangTuaRef->id;
+            $session->anak_terpilih_id = $session->anak_terpilih_id ?? $singleSiswaId;
+        }
 
         // 5. Cek timeout (30 menit) -> reset
         if (Carbon::parse($session->last_activity)->diffInMinutes(now()) > self::TIMEOUT_MINUTES) {
