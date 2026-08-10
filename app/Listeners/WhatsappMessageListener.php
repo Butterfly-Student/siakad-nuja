@@ -37,29 +37,20 @@ class WhatsappMessageListener
                 return;
             }
 
-            // Filter out newsletters, status updates, broadcasts, and LID channels
+            // Filter out ONLY newsletters, status updates, and broadcasts
+            // DO NOT filter out @lid because modern WhatsApp uses @lid JIDs for privacy user chats!
             if (
                 str_contains($rawFrom, '@newsletter') ||
                 str_contains($rawFrom, '@status') ||
-                str_contains($rawFrom, '@broadcast') ||
-                str_contains($rawFrom, '@lid')
+                str_contains($rawFrom, '@broadcast')
             ) {
-                Log::debug("[WhatsappMessageListener] Ignored non-personal JID: {$rawFrom}");
+                Log::debug("[WhatsappMessageListener] Ignored non-personal channel: {$rawFrom}");
                 return;
             }
 
-            // Clean number from JID or non-digits (e.g. "6287886833160@c.us" -> "6287886833160")
-            $noHp = preg_replace('/[^0-9]/', '', $rawFrom);
+            Log::info("[WhatsappMessageListener] Processing inbound message from {$rawFrom}: {$body}");
 
-            // Ignore if invalid phone number length (e.g. channel IDs with 18 digits or empty)
-            if (strlen($noHp) < 9 || strlen($noHp) > 15) {
-                Log::debug("[WhatsappMessageListener] Ignored invalid phone length ({$noHp}) from {$rawFrom}");
-                return;
-            }
-
-            Log::info("[WhatsappMessageListener] Processing inbound message from {$noHp}: {$body}");
-
-            $this->chatbotService->process($noHp, (string) $body);
+            $this->chatbotService->process($rawFrom, (string) $body);
         } catch (\Exception $e) {
             Log::error('[WhatsappMessageListener] Error processing message: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),

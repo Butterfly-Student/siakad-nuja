@@ -29,12 +29,11 @@ class WhatsappGatewayService
      */
     public function toJid(string $noHp): string
     {
-        $normalized = $this->normalisasiNomor($noHp);
-
-        if (str_contains($normalized, '@')) {
-            return $normalized;
+        if (str_contains($noHp, '@')) {
+            return $noHp;
         }
 
+        $normalized = $this->normalisasiNomor($noHp);
         return $normalized . '@c.us';
     }
 
