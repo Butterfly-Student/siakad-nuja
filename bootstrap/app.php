@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhook/*',
         ]);
 
+        // Railway/Cloudflare mem-proxy HTTPS -> HTTP; percayai agar
+        // generate URL & secure cookie benar.
+        $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*'));
+
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);

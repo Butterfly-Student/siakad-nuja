@@ -1,0 +1,66 @@
+# =============================================================================
+# Verifikasi image produksi secara lokal (mirip kondisi Railway)
+#   docker compose up --build
+#   -> aplikasi  : http://localhost:8080
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      APP_NAME: SiakadNuja
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: siakad_nuja
+      DB_USERNAME: siakad
+      DB_PASSWORD: secret
+
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      TRUSTED_PROXIES: "*"
+
+      WHATSAPP_WEB_ENABLED: "true"
+      WHATSAPP_WEB_HOST: 127.0.0.1
+      WHATSAPP_WEB_PORT: "3000"
+      WHATSAPP_WEB_TOKEN: siakad-nuja-secret-token
+      WHATSAPP_WEB_NODE_BINARY: /usr/local/bin/node
+      WHATSAPP_WEB_NPM_BINARY: /usr/local/bin/npm
+
+      RUN_MIGRATIONS: "true"
+      START_QUEUE: "true"
+      TZ: Asia/Jakarta
+    volumes:
+      # Simulasi Railway Volume: sesi WA & upload bertahan antar rebuild
+      - storage_app:/var/www/html/storage/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: siakad_nuja
+      MYSQL_USER: siakad
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mysql_data:
+  storage_app:

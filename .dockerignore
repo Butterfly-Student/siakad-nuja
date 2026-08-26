@@ -1,0 +1,49 @@
+# Git & CI
+.git
+.gitignore
+.gitattributes
+.github/
+
+# Dependencies — di-install ulang di dalam image
+node_modules/
+vendor/
+public/node_modules/
+
+# Build artifacts — dibangun ulang oleh stage Docker
+public/build/
+public/hot
+public/storage
+
+# Secrets — JANGAN pernah masuk image
+.env
+.env.backup
+.env.production
+auth.json
+
+# Storage runtime — dibuat saat container start / volume Railway
+storage/app/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+!storage/app/.gitignore
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+!storage/logs/.gitignore
+
+# Dev tooling & file non-produksi
+.claude/
+__pycache__/
+tests/
+.phpunit.result.cache
+.phpunit.cache/
+docs/
+plan.md
+database_schema.md
+screenshot.js
+test_webhook.php
+query_test.php
+docker-compose.yml
+railway.toml
+.editorconfig
