@@ -42,8 +42,7 @@ if [[ "${DB_CONNECTION:-mysql}" == mysql || "${DB_CONNECTION:-}" == mariadb ]]; 
     log "Menunggu database ${host}:${port} (maks ${DB_WAIT_TIMEOUT}s)..."
     ready=0
     for ((i = 1; i <= DB_WAIT_TIMEOUT; i++)); do
-        if (exec 3<>"/dev/tcp/${host}/${port}") 2>/dev/null; then
-            exec 3>&- 3<&- || true
+        if timeout 2 bash -c "exec </dev/tcp/${host}/${port}" 2>/dev/null; then
             ready=1
             break
         fi
@@ -94,14 +93,18 @@ fi
 # -----------------------------------------------------------------------------
 PIDS=()
 
+# Jalankan proses panjang dengan auto-restart.
+# Output mengalir ke stdout (log deployment Railway) DAN file di storage/logs.
 run_forever() {
     local name="$1"
     shift
     (
+        # loop penjaga: kesalahan satu proses TIDAK boleh mematikan loop
+        set +e
         while true; do
-            "$@" >>"storage/logs/${name}.log" 2>&1
+            "$@" > >(tee -a "storage/logs/${name}.log") 2>&1
             code=$?
-            echo "[watchdog:${name}] proses keluar (kode ${code}), restart dalam 5 detik..." >>"storage/logs/${name}.log"
+            echo "[watchdog:${name}] proses keluar (kode ${code}), restart dalam 5 detik..."
             sleep 5
         done
     ) &
@@ -123,21 +126,25 @@ trap cleanup INT TERM
 # -----------------------------------------------------------------------------
 # 6. WhatsApp sidecar + watchdog terpisah
 # -----------------------------------------------------------------------------
+sidecar_alive() {
+    [[ -f "${SIDECAR_PID_FILE}" ]] || return 1
+    local pid
+    pid="$(tr -d '[:space:]' <"${SIDECAR_PID_FILE}" 2>/dev/null)" || return 1
+    [[ -n "${pid}" ]] || return 1
+    kill -0 "${pid}" 2>/dev/null
+}
+
 start_sidecar() {
     log "Memulai WhatsApp sidecar..."
     php artisan whatsapp:sidecar:start || true
 
     (
+        set +e
         while true; do
             sleep 15
-            if [[ -f "${SIDECAR_PID_FILE}" ]]; then
-                pid="$(cat "${SIDECAR_PID_FILE}" 2>/dev/null | tr -d '[:space:]')"
-                if [[ -n "${pid}" ]] && ! kill -0 "${pid}" 2>/dev/null; then
-                    echo "[watchdog:sidecar] sidecar mati (pid ${pid}), memulai ulang..." >>storage/logs/wa-listen.log
-                    php artisan whatsapp:sidecar:start >>storage/logs/wa-listen.log 2>&1 || true
-                fi
-            else
-                php artisan whatsapp:sidecar:start >>storage/logs/wa-listen.log 2>&1 || true
+            if ! sidecar_alive; then
+                echo "[watchdog:sidecar] sidecar mati/belum jalan, memulai ulang..."
+                php artisan whatsapp:sidecar:start || true
             fi
         done
     ) &

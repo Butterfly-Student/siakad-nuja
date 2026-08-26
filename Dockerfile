@@ -3,7 +3,7 @@
 #
 # Arsitektur single-container yang berisi:
 #   - PHP 8.3 + ekstensi produksi (pdo_mysql, gd, zip, intl, opcache, pcntl, posix)
-#   - Node.js 20  -> runtime WhatsApp sidecar (whatsapp-web.js)
+#   - Node.js 22  -> runtime WhatsApp sidecar (whatsapp-web.js)
 #   - Chromium    -> browser headless untuk Puppeteer
 #   - Aset frontend hasil `npm run build`
 #   - Dependency composer --no-dev
@@ -17,12 +17,17 @@
 # ---------------------------------------------------------------------------
 # Stage 1 — build aset frontend (Vite + Tailwind v4)
 # ---------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS assets
+FROM node:22-bookworm-slim AS assets
 
 WORKDIR /build
 
+# puppeteer hanya devDependency untuk skrip lokal (screenshot.js);
+# build Vite tidak butuh browser -> lewati unduhan Chrome & lifecycle scripts
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --ignore-scripts --no-audit --no-fund
 
 COPY vite.config.js ./
 COPY resources ./resources
