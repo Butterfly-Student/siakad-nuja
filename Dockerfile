@@ -2,7 +2,7 @@
 # SIAKAD NUJA — Production image (Railway-ready)
 #
 # Arsitektur single-container yang berisi:
-#   - PHP 8.3 + ekstensi produksi (pdo_mysql, gd, zip, intl, opcache, pcntl, posix)
+#   - PHP 8.4 + ekstensi produksi (pdo_mysql, gd, zip, intl, opcache, pcntl, posix)
 #   - Node.js 22  -> runtime WhatsApp sidecar (whatsapp-web.js)
 #   - Chromium    -> browser headless untuk Puppeteer
 #   - Aset frontend hasil `npm run build`
@@ -59,7 +59,7 @@ RUN composer install \
 # ---------------------------------------------------------------------------
 # Stage 3 — image produksi
 # ---------------------------------------------------------------------------
-FROM php:8.3-cli-bookworm AS production
+FROM php:8.4-cli-bookworm AS production
 
 ARG TZ=Asia/Jakarta
 
